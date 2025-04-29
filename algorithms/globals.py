@@ -1,5 +1,7 @@
 import opfunu.cec_based as cec
 import numpy as np 
+import csv
+import multiprocessing as mp
 
 def_dimensions = [10, 30, 50]
 def_runs = 51
@@ -7,6 +9,82 @@ def_max_fes = 10000
 def_checkpoints = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 def_smallest_val = 1e-8
 def_clamps = [-100, 100]
+ 
+class Evaluation_method():
+    def __init__(self, tested_f, dimension):
+        self.tested_f = tested_f
+        self.objective_f = self.tested_f["func"](ndim=dimension)
+
+    def evaluate(self, x):
+        Y = self.objective_f.evaluate(x)
+        error = abs(Y - self.tested_f["global_min"])
+        return error
+
+    def gradient(self, x, E=1e-8):
+        grad = np.zeros_like(x)
+        fx = self.objective_f.evaluate(x)
+        
+        for i in range(len(x)):
+            x_eps = np.array(x, copy=True)
+            x_eps[i] += E
+            grad[i] = (self.objective_f.evaluate(x_eps) - fx) / E
+        
+        return grad
+
+
+def gather_data(algorithm):
+    for curr_f in CEC2013:
+        CMAES_records = []
+        CMAES_run_records = []
+        for dimension in def_dimensions:
+
+            with mp.Pool(processes=mp.cpu_count()) as pool:
+                CMAES_run_records.extend([item for sublist in pool.starmap(
+                    algorithm,
+                    [(dimension, curr_f, run_id) for run_id in range(def_runs)]
+                ) for item in sublist])
+
+            record = {checkpoint: [] for checkpoint in def_checkpoints}
+            for entry in CMAES_run_records:
+                if(entry["dimension"] == dimension):
+                    record[entry["checkpoint"]].append(entry["error"])
+
+            for checkpoint in def_checkpoints:
+                errors_at_checkpoint = record[checkpoint]
+                mean = np.mean(errors_at_checkpoint)
+                std = np.std(errors_at_checkpoint)
+                median = np.median(errors_at_checkpoint)
+                minimum = np.min(errors_at_checkpoint)
+                maximum = np.max(errors_at_checkpoint)
+
+                mean = mean if mean >= def_smallest_val else 0
+                std = std if std >= def_smallest_val else 0
+                median = median if median >= def_smallest_val else 0
+                minimum = minimum if minimum >= def_smallest_val else 0
+                maximum = maximum if maximum >= def_smallest_val else 0
+
+                CMAES_records.append({
+                    "function": curr_f["shortname"],
+                    "dimensions": dimension,
+                    "checkpoint": checkpoint,
+                    "mean": mean,
+                    "std": std,
+                    "median": median,
+                    "max": maximum,
+                    "min": minimum,
+                })
+
+        keys = CMAES_records[0].keys()
+        with open(f'CMAES_records_{curr_f["shortname"]}.csv', mode='w', newline='') as file:
+            writer = csv.DictWriter(file, fieldnames=keys)
+            writer.writeheader()
+            writer.writerows(CMAES_records)
+
+        run_keys = CMAES_run_records[0].keys()
+        with open(f'CMAES_run_records_{curr_f["shortname"]}.csv', mode='w', newline='') as file:
+            writer = csv.DictWriter(file, fieldnames=run_keys)
+            writer.writeheader()
+            writer.writerows(CMAES_run_records)
 
 CEC2013 = [
     {"shortname": "F12013", "name": "Sphere Function", "func": cec.F12013, "global_min": -1400},
@@ -38,24 +116,3 @@ CEC2013 = [
     {"shortname": "F272013", "name": "Composition Function 7 (n=5,Rotated)", "func": cec.F272013, "global_min": 1300},
     {"shortname": "F282013", "name": "Composition Function 8 (n=5,Rotated)", "func": cec.F282013, "global_min": 1400},
 ]
- 
-class Evaluation_method():
-    def __init__(self, tested_f, dimension):
-        self.tested_f = tested_f
-        self.objective_f = self.tested_f["func"](ndim=dimension)
-
-    def evaluate(self, x):
-        Y = self.objective_f.evaluate(x)
-        error = abs(Y - self.tested_f["global_min"])
-        return error
-
-    def gradient(self, x, E=1e-8):
-        grad = np.zeros_like(x)
-        fx = self.objective_f.evaluate(x)
-        
-        for i in range(len(x)):
-            x_eps = np.array(x, copy=True)
-            x_eps[i] += E
-            grad[i] = (self.objective_f.evaluate(x_eps) - fx) / E
-        
-        return grad
