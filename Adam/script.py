@@ -48,6 +48,12 @@ for curr_f in globals.CEC2013:
             minimum = np.min(errors_at_checkpoint)
             maximum = np.max(errors_at_checkpoint)
 
+            mean = mean if mean >= globals.def_smallest_val else 0
+            std = std if std >= globals.def_smallest_val else 0
+            median = median if median >= globals.def_smallest_val else 0
+            minimum = minimum if minimum >= globals.def_smallest_val else 0
+            maximum = maximum if maximum >= globals.def_smallest_val else 0
+
             Adam_records.append({
                 "function": curr_f["shortname"],
                 "dimensions": dimension,
