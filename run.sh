@@ -1,4 +1,6 @@
 #!/bin/bash
+# uruchom jako: sbatch run.sh
 
-./CMAES/run.sh &
-./Adam/run.sh &
+sbatch ./CMAES/run.sh
+sbatch ./Adam/run.sh
+
