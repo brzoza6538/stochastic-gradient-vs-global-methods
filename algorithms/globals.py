@@ -32,20 +32,21 @@ class Evaluation_method():
         return grad
 
 
-def gather_data(algorithm):
+def gather_data(algorithm, algo_name):
     for curr_f in CEC2013:
-        CMAES_records = []
-        CMAES_run_records = []
+        print("doing f ", curr_f["shortname"])
+        records = []
+        run_records = []
         for dimension in def_dimensions:
-
+            print("\tdimension ", dimension)
             with mp.Pool(processes=mp.cpu_count()) as pool:
-                CMAES_run_records.extend([item for sublist in pool.starmap(
+                run_records.extend([item for sublist in pool.starmap(
                     algorithm,
                     [(dimension, curr_f, run_id) for run_id in range(def_runs)]
                 ) for item in sublist])
 
             record = {checkpoint: [] for checkpoint in def_checkpoints}
-            for entry in CMAES_run_records:
+            for entry in run_records:
                 if(entry["dimension"] == dimension):
                     record[entry["checkpoint"]].append(entry["error"])
 
@@ -63,7 +64,7 @@ def gather_data(algorithm):
                 minimum = minimum if minimum >= def_smallest_val else 0
                 maximum = maximum if maximum >= def_smallest_val else 0
 
-                CMAES_records.append({
+                records.append({
                     "function": curr_f["shortname"],
                     "dimensions": dimension,
                     "checkpoint": checkpoint,
@@ -74,17 +75,17 @@ def gather_data(algorithm):
                     "min": minimum,
                 })
 
-        keys = CMAES_records[0].keys()
-        with open(f'CMAES_records_{curr_f["shortname"]}.csv', mode='w', newline='') as file:
+        keys = records[0].keys()
+        with open(f'./{algo_name}_logs/{algo_name}_records_{curr_f["shortname"]}.csv', mode='w', newline='') as file:
             writer = csv.DictWriter(file, fieldnames=keys)
             writer.writeheader()
-            writer.writerows(CMAES_records)
+            writer.writerows(records)
 
-        run_keys = CMAES_run_records[0].keys()
-        with open(f'CMAES_run_records_{curr_f["shortname"]}.csv', mode='w', newline='') as file:
+        run_keys = run_records[0].keys()
+        with open(f'./{algo_name}_logs/{algo_name}_run_records_{curr_f["shortname"]}.csv', mode='w', newline='') as file:
             writer = csv.DictWriter(file, fieldnames=run_keys)
             writer.writeheader()
-            writer.writerows(CMAES_run_records)
+            writer.writerows(run_records)
 
 CEC2013 = [
     {"shortname": "F12013", "name": "Sphere Function", "func": cec.F12013, "global_min": -1400},

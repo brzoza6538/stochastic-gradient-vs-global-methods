@@ -20,4 +20,4 @@ def run_CMAES(dimension, curr_f, run_id):
             })
     return result
 
-globals.gather_data(run_CMAES)
+globals.gather_data(run_CMAES, "cmaes")

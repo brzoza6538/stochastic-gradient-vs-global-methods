@@ -21,4 +21,4 @@ def run_Adam(dimension, curr_f, run_id):
             })
     return result
 
-globals.gather_data(run_Adam)
+globals.gather_data(run_Adam, "adam")
