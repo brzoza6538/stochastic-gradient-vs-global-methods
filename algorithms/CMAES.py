@@ -7,7 +7,7 @@ class CMAES:
             f_objective,
             dimension, 
             mean=None, 
-            sigma=0.3, 
+            sigma=None,
             lamb=None,
             min_clamp=def_clamps[0],
             max_clamp=def_clamps[1],
@@ -47,7 +47,7 @@ class CMAES:
             self.m = mean
         self.objective_limit = objective_limit or self.dimension * self.max_fes
 
-        self.s = sigma
+        self.s = sigma or (self.max_clamp - self.min_clamp) / 3
         self.Ps = np.zeros(self.dimension)
         self.Pc = np.zeros(self.dimension)
         self.B = np.eye(self.dimension)
@@ -70,8 +70,9 @@ class CMAES:
             child = self.m + self.s * (self.B @ (self.D * np.random.randn(self.dimension)))
             child = np.clip(child, self.min_clamp, self.max_clamp)
             offspring.append(child)
-            fitness.append(self.f_objective(offspring[k]))
-            self.objective_counter += 1
+            eval, evals_used = self.f_objective(offspring[k])
+            fitness.append(eval)
+            self.objective_counter += evals_used
 
         offspring = np.array(offspring)  
         sorted_idx = np.argsort(fitness)  

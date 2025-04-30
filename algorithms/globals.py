@@ -18,7 +18,8 @@ class Evaluation_method():
     def evaluate(self, x):
         Y = self.objective_f.evaluate(x)
         error = abs(Y - self.tested_f["global_min"])
-        return error
+        evaluations_used = 1
+        return error, evaluations_used
 
     def gradient(self, x, E=1e-8):
         grad = np.zeros_like(x)
@@ -29,7 +30,8 @@ class Evaluation_method():
             x_eps[i] += E
             grad[i] = (self.objective_f.evaluate(x_eps) - fx) / E
         
-        return grad
+        evaluations_used = len(x)
+        return grad, evaluations_used
 
 
 def gather_data(algorithm, algo_name):
@@ -52,6 +54,7 @@ def gather_data(algorithm, algo_name):
 
             for checkpoint in def_checkpoints:
                 errors_at_checkpoint = record[checkpoint]
+
                 mean = np.mean(errors_at_checkpoint)
                 std = np.std(errors_at_checkpoint)
                 median = np.median(errors_at_checkpoint)

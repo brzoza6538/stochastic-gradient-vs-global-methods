@@ -8,9 +8,11 @@
 #SBATCH --output="Adam/output.log"
 #SBATCH --error="Adam/error.log"
 
-cd $SLURM_SUBMIT_DIR
 
-source ~/take_1/.venv/bin/activate
-export PYTHONPATH=$PYTHONPATH:~/take_1
+BASE_DIR=~/$(basename $SLURM_SUBMIT_DIR)
+
+cd $SLURM_SUBMIT_DIR
+source $BASE_DIR/.venv/bin/activate
+export PYTHONPATH=$PYTHONPATH:$BASE_DIR
 cd Adam
 python3 script.py

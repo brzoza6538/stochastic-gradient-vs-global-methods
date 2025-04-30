@@ -1,6 +1,7 @@
 from .globals import *
 import numpy as np 
 
+
 class Adam():
     def __init__(
             self,
@@ -38,8 +39,8 @@ class Adam():
 
         self.log = {checkpoint: [] for checkpoint in self.checkpoints}
         self.objective_counter = 0
-        self.gradient_counter = 0
         self.error = None
+        self.seen_checkpoints = set()
 
         if(objective_limit is None):
             self.objective_limit = self.dimension * self.max_fes
@@ -47,13 +48,20 @@ class Adam():
             self.objective_limit = objective_limit
 
         if(x is None):
-            self.x = np.random.uniform(self.min_clamp, self.max_clamp, size=self.dimension)
+            self.real_x = np.random.uniform(self.min_clamp, self.max_clamp, size=self.dimension) #N
         else:
-            self.x = x
-
+            self.real_x = x #N
+        self.x = self.normalize(self.real_x) #N
         self.m = np.zeros_like(self.x)
         self.v = np.zeros_like(self.x)
         self.t = 0
+
+    def normalize(self, x): #N 
+        return 2 * (x - self.min_clamp) / (self.max_clamp - self.min_clamp) - 1
+
+    def denormalize(self, x): #N
+        return 0.5 * (x + 1) * (self.max_clamp - self.min_clamp) + self.min_clamp
+
 
     def start(self):
         while (self.objective_counter < self.objective_limit) and (self.error is None or self.error > self.smallest_val):
@@ -61,8 +69,10 @@ class Adam():
             self.collect_data()
 
     def step(self):
-        grad = self.f_gradient(self.x, E=self.E)
-        self.gradient_counter += 1
+        grad, evals_used = self.f_gradient(self.real_x, E=self.E) #N
+        self.objective_counter += evals_used
+        scale = 2 / (self.max_clamp - self.min_clamp) #N
+        grad = grad * scale #N
 
         self.t += 1
         self.m = self.B1 * self.m + (1 - self.B1) * grad
@@ -71,11 +81,11 @@ class Adam():
         v_hat = self.v / (1 - self.B2 ** self.t)
 
         self.x -= self.lr * m_hat / (np.sqrt(v_hat) + self.E)
-        self.x = np.clip(self.x, self.min_clamp, self.max_clamp)
 
-        self.error = self.f_objective(self.x)
-        self.objective_counter += 1
-
+        self.real_x = self.denormalize(self.x) #N
+        self.x = np.clip(self.x, -1, 1) #N
+        self.error, evals_used = self.f_objective(self.real_x) #N
+        self.objective_counter += evals_used
 
     def collect_data(self):
         for checkpoint in self.checkpoints:
@@ -84,9 +94,9 @@ class Adam():
             if self.error < self.smallest_val and self.objective_counter <= checkpoint_fes:
                 self.log[checkpoint].append(0)
 
-            if self.objective_counter == checkpoint_fes:
+            if checkpoint not in self.seen_checkpoints and self.objective_counter >= checkpoint_fes:
                 self.log[checkpoint].append(0 if self.error < self.smallest_val else self.error)
-
+                self.seen_checkpoints.add(checkpoint)
 
     def return_epoch_log(self):
         return(self.objective_counter, self.error)
