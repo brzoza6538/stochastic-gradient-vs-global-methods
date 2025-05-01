@@ -1,6 +1,17 @@
 from .globals import *
 import numpy as np 
 
+# parametry lr=0.001, E=1e-8, B1=0.9, B2=0.999, zostały specjalnie dobrane do zadań sieci neuronowej
+# mają działać dla sieci gdzie wartości są w przedziałach typu [-1, 1], lub [0, 1]
+# nie ma heurystyki dobierania parametrów 
+# można co najwyżej metodą prób i błędów dopasowywać parametry bazując na tych standardowych
+
+# B1 kieruje udziałem kierunku gradientu z przeszłości, B2 długości kroku z przeszłości
+# jeśli wykres za mało się zmienia warto zmniejszyć B1
+# jeśli wykres przeskakuje "dołki" warto zmniejszyć B2 
+# learning rate zmieniać jeśli progres jest za wolny, lub za mało dokładny
+
+# po otrzymaniu punktu x przerzucam go i gradient do przestrzeni [-1, 1], następnie pod koniec wracam do przedziału [-100, 100] 
 
 class Adam():
     def __init__(
