@@ -12,7 +12,7 @@ import numpy as np
 # learning rate zmieniać jeśli progres jest za wolny, lub za mało dokładny
 
 # po otrzymaniu punktu x przerzucam go i gradient do przestrzeni [-1, 1], następnie pod koniec wracam do przedziału [-100, 100] 
-
+#https://www.kdnuggets.com/2022/12/tuning-adam-optimizer-parameters-pytorch.html
 class Adam():
     def __init__(
             self,
@@ -67,10 +67,10 @@ class Adam():
         self.v = np.zeros_like(self.x)
         self.t = 0
 
-    def normalize(self, x): #N 
+    def normalize(self, x): # N
         return 2 * (x - self.min_clamp) / (self.max_clamp - self.min_clamp) - 1
 
-    def denormalize(self, x): #N
+    def denormalize(self, x): # N
         return 0.5 * (x + 1) * (self.max_clamp - self.min_clamp) + self.min_clamp
 
 
@@ -93,8 +93,8 @@ class Adam():
 
         self.x -= self.lr * m_hat / (np.sqrt(v_hat) + self.E)
 
-        self.real_x = self.denormalize(self.x) #N
         self.x = np.clip(self.x, -1, 1) #N
+        self.real_x = self.denormalize(self.x) #N
         self.error, evals_used = self.f_objective(self.real_x) #N
         self.objective_counter += evals_used
 
