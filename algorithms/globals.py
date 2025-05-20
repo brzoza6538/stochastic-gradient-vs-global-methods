@@ -2,37 +2,56 @@ import opfunu.cec_based as cec
 import numpy as np 
 import csv
 import multiprocessing as mp
+import os
 
 def_dimensions = [10, 30, 50]
 def_runs = 51
 def_max_fes = 10000
 def_checkpoints = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 def_smallest_val = 1e-8
-def_clamps = [-100, 100]
- 
-class Evaluation_method(): # TODO dodać skalowanie 
+# def_clamps = [-100, 100]
+
+def_clamps = [-1, 1]
+original_clamps = [-100, 100]
+
+class Evaluation_method():
     def __init__(self, tested_f, dimension):
         self.tested_f = tested_f
         self.objective_f = self.tested_f["func"](ndim=dimension)
+        
+        # Skalowanie global_min do zakresu [-1, 1]
+        a, b = original_clamps  # -100, 100
+        c, d = def_clamps       # -1, 1
+        self.global_min_scaled = ((self.tested_f["global_min"] - a) / (b - a)) * (d - c) + c
+
+    def scale(self, x):
+        a, b = globals.def_clamps
+        c, d = globals.original_clamps
+
+        x_scaled = ((x - a) / (b - a)) * (d - c) + c
+        return x_scaled 
 
     def evaluate(self, x):
-        Y = self.objective_f.evaluate(x)
-        error = abs(Y - self.tested_f["global_min"])
+        x_scaled = self.scale(x)
+        Y = self.objective_f.evaluate(x_scaled)
+        error = abs(Y - self.global_min_scaled)
         evaluations_used = 1
         return error, evaluations_used
 
     def gradient(self, x, E=1e-8):
-        grad = np.zeros_like(x)
-        fx = self.objective_f.evaluate(x)
+        x_scaled = self.scale(x)
+        grad = np.zeros_like(x_scaled)
+        fx = self.objective_f.evaluate(x_scaled)
         
-        for i in range(len(x)):
-            x_eps = np.array(x, copy=True)
+        for i in range(len(x_scaled)):
+            x_eps = np.array(x_scaled, copy=True)
             x_eps[i] += E
-            grad[i] = (self.objective_f.evaluate(x_eps) - fx) / E
+            Y = self.objective_f.evaluate(x_eps)
+            grad[i] = (Y - fx) / E
         
-        evaluations_used = len(x)
+        evaluations_used = len(x_scaled) + 1
         return grad, evaluations_used
-
+    
 
 def gather_data(algorithm, algo_name):
     for curr_f in CEC2013:
@@ -78,7 +97,16 @@ def gather_data(algorithm, algo_name):
                     "min": minimum,
                 })
 
+        try:
+            os.mkdir(f'{algo_name}_logs')
+            print(f"Directory {algo_name}_logs created successfully.")
+        except PermissionError:
+            print(f"Permission denied: Unable to create {algo_name}_logs.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+
         keys = records[0].keys()
+
         with open(f'./{algo_name}_logs/{algo_name}_records_{curr_f["shortname"]}.csv', mode='w', newline='') as file:
             writer = csv.DictWriter(file, fieldnames=keys)
             writer.writeheader()
@@ -100,23 +128,23 @@ CEC2013 = [
     {"shortname": "F72013", "name": "Rotated Schaffers F7 Function", "func": cec.F72013, "global_min": -800},
     {"shortname": "F82013", "name": "Rotated Ackley’s Function", "func": cec.F82013, "global_min": -700},
     {"shortname": "F92013", "name": "Rotated Weierstrass Function", "func": cec.F92013, "global_min": -600},
-    {"shortname": "F102013", "name": "Rotated Griewank’s Function", "func": cec.F102013, "global_min": -500},
-    {"shortname": "F112013", "name": "Rastrigin’s Function", "func": cec.F112013, "global_min": -400},
-    {"shortname": "F122013", "name": "Rotated Rastrigin’s Function", "func": cec.F122013, "global_min": -300},
-    {"shortname": "F132013", "name": "Non-Continuous Rotated Rastrigin’s Function", "func": cec.F132013, "global_min": -200},
-    {"shortname": "F142013", "name": "Schwefel's Function", "func": cec.F142013, "global_min": -100},
-    {"shortname": "F152013", "name": "Rotated Schwefel's Function", "func": cec.F152013, "global_min": 100},
-    {"shortname": "F162013", "name": "Rotated Katsuura Function", "func": cec.F162013, "global_min": 200},
-    {"shortname": "F172013", "name": "Lunacek Bi_Rastrigin Function", "func": cec.F172013, "global_min": 300},
-    {"shortname": "F182013", "name": "Rotated Lunacek Bi_Rastrigin Function", "func": cec.F182013, "global_min": 400},
-    {"shortname": "F192013", "name": "Expanded Griewank’s plus Rosenbrock’s Function", "func": cec.F192013, "global_min": 500},
-    {"shortname": "F202013", "name": "Expanded Scaffer’s F6 Function", "func": cec.F202013, "global_min": 600},
-    {"shortname": "F212013", "name": "Composition Function 1 (n=5,Rotated)", "func": cec.F212013, "global_min": 700},
-    {"shortname": "F222013", "name": "Composition Function 2 (n=3,Unrotated)", "func": cec.F222013, "global_min": 800},
-    {"shortname": "F232013", "name": "Composition Function 3 (n=3,Rotated)", "func": cec.F232013, "global_min": 900},
-    {"shortname": "F242013", "name": "Composition Function 4 (n=3,Rotated)", "func": cec.F242013, "global_min": 1000},
-    {"shortname": "F252013", "name": "Composition Function 5 (n=3,Rotated)", "func": cec.F252013, "global_min": 1100},
-    {"shortname": "F262013", "name": "Composition Function 6 (n=5,Rotated)", "func": cec.F262013, "global_min": 1200},
-    {"shortname": "F272013", "name": "Composition Function 7 (n=5,Rotated)", "func": cec.F272013, "global_min": 1300},
-    {"shortname": "F282013", "name": "Composition Function 8 (n=5,Rotated)", "func": cec.F282013, "global_min": 1400},
+    # {"shortname": "F102013", "name": "Rotated Griewank’s Function", "func": cec.F102013, "global_min": -500},
+    # {"shortname": "F112013", "name": "Rastrigin’s Function", "func": cec.F112013, "global_min": -400},
+    # {"shortname": "F122013", "name": "Rotated Rastrigin’s Function", "func": cec.F122013, "global_min": -300},
+    # {"shortname": "F132013", "name": "Non-Continuous Rotated Rastrigin’s Function", "func": cec.F132013, "global_min": -200},
+    # {"shortname": "F142013", "name": "Schwefel's Function", "func": cec.F142013, "global_min": -100},
+    # {"shortname": "F152013", "name": "Rotated Schwefel's Function", "func": cec.F152013, "global_min": 100},
+    # {"shortname": "F162013", "name": "Rotated Katsuura Function", "func": cec.F162013, "global_min": 200},
+    # {"shortname": "F172013", "name": "Lunacek Bi_Rastrigin Function", "func": cec.F172013, "global_min": 300},
+    # {"shortname": "F182013", "name": "Rotated Lunacek Bi_Rastrigin Function", "func": cec.F182013, "global_min": 400},
+    # {"shortname": "F192013", "name": "Expanded Griewank’s plus Rosenbrock’s Function", "func": cec.F192013, "global_min": 500},
+    # {"shortname": "F202013", "name": "Expanded Scaffer’s F6 Function", "func": cec.F202013, "global_min": 600},
+    # {"shortname": "F212013", "name": "Composition Function 1 (n=5,Rotated)", "func": cec.F212013, "global_min": 700},
+    # {"shortname": "F222013", "name": "Composition Function 2 (n=3,Unrotated)", "func": cec.F222013, "global_min": 800},
+    # {"shortname": "F232013", "name": "Composition Function 3 (n=3,Rotated)", "func": cec.F232013, "global_min": 900},
+    # {"shortname": "F242013", "name": "Composition Function 4 (n=3,Rotated)", "func": cec.F242013, "global_min": 1000},
+    # {"shortname": "F252013", "name": "Composition Function 5 (n=3,Rotated)", "func": cec.F252013, "global_min": 1100},
+    # {"shortname": "F262013", "name": "Composition Function 6 (n=5,Rotated)", "func": cec.F262013, "global_min": 1200},
+    # {"shortname": "F272013", "name": "Composition Function 7 (n=5,Rotated)", "func": cec.F272013, "global_min": 1300},
+    # {"shortname": "F282013", "name": "Composition Function 8 (n=5,Rotated)", "func": cec.F282013, "global_min": 1400},
 ]

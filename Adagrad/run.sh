@@ -6,7 +6,7 @@
 #SBATCH --time=24:00:00
 #SBATCH -p plgrid	
 #SBATCH --output="Adagrad/output.log"
-#SBATCH --error="CMAES/error.log"
+#SBATCH --error="Adagrad/error.log"
 
 
 BASE_DIR=~/$(basename $SLURM_SUBMIT_DIR)
