@@ -10,7 +10,7 @@ def_checkpoints = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 def_smallest_val = 1e-8
 def_clamps = [-100, 100]
  
-class Evaluation_method():
+class Evaluation_method(): # TODO dodać skalowanie 
     def __init__(self, tested_f, dimension):
         self.tested_f = tested_f
         self.objective_f = self.tested_f["func"](ndim=dimension)

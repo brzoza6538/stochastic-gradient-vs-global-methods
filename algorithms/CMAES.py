@@ -28,8 +28,8 @@ class CMAES:
         self.log = {checkpoint: [] for checkpoint in self.checkpoints}
         self.objective_counter = 0
         self.seen_checkpoints = set()
-
-        self.lamb = lamb or int(4 + np.floor(3 * np.log(self.dimension)))
+        # TODO mówił że sigma ma być plus minus jeden - sprawdźczy co i jak
+        self.lamb = lamb or int(4 + np.floor(3 * np.log(self.dimension))) # TODO check lamd = 4m
         self.mu = self.lamb // 2
         self.weights = np.log(self.mu + 0.5) - np.log(np.arange(1, self.mu + 1))
         self.weights /= np.sum(self.weights)

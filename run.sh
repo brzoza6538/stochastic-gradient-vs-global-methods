@@ -3,3 +3,6 @@
 sbatch ./CMAES/run.sh
 sbatch ./Adam/run.sh
 
+# squeue -u $USER
+# scancel 
+# scontrol show job 20860381
