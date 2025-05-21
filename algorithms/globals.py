@@ -25,8 +25,8 @@ class Evaluation_method():
         self.global_min_scaled = ((self.tested_f["global_min"] - a) / (b - a)) * (d - c) + c
 
     def scale(self, x):
-        a, b = globals.def_clamps
-        c, d = globals.original_clamps
+        a, b = def_clamps
+        c, d = original_clamps
 
         x_scaled = ((x - a) / (b - a)) * (d - c) + c
         return x_scaled 

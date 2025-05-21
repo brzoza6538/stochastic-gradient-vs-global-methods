@@ -59,20 +59,13 @@ class Adam():
             self.objective_limit = objective_limit
 
         if(x is None):
-            self.real_x = np.random.uniform(self.min_clamp, self.max_clamp, size=self.dimension) #N
+            self.x = np.random.uniform(self.min_clamp, self.max_clamp, size=self.dimension)
         else:
-            self.real_x = x #N
-        self.x = self.normalize(self.real_x) #N
+            self.x = x
+
         self.m = np.zeros_like(self.x)
         self.v = np.zeros_like(self.x)
         self.t = 0
-
-    def normalize(self, x): # N
-        return 2 * (x - self.min_clamp) / (self.max_clamp - self.min_clamp) - 1
-
-    def denormalize(self, x): # N
-        return 0.5 * (x + 1) * (self.max_clamp - self.min_clamp) + self.min_clamp
-
 
     def start(self):
         while (self.objective_counter < self.objective_limit) and (self.error is None or self.error > self.smallest_val):
@@ -80,10 +73,8 @@ class Adam():
             self.collect_data()
 
     def step(self):
-        grad, evals_used = self.f_gradient(self.real_x, E=self.E) #N
+        grad, evals_used = self.f_gradient(self.x, E=self.E) 
         self.objective_counter += evals_used
-        scale = 2 / (self.max_clamp - self.min_clamp) #N
-        grad = grad * scale #N
 
         self.t += 1
         self.m = self.B1 * self.m + (1 - self.B1) * grad
@@ -92,11 +83,11 @@ class Adam():
         v_hat = self.v / (1 - self.B2 ** self.t)
 
         self.x -= self.lr * m_hat / (np.sqrt(v_hat) + self.E)
+        self.x = np.clip(self.x, self.min_clamp, self.max_clamp)
 
-        self.x = np.clip(self.x, -1, 1) #N
-        self.real_x = self.denormalize(self.x) #N
-        self.error, evals_used = self.f_objective(self.real_x) #N
+        self.error, evals_used = self.f_objective(self.x) 
         self.objective_counter += evals_used
+
 
     def collect_data(self):
         for checkpoint in self.checkpoints:
@@ -111,4 +102,3 @@ class Adam():
 
     def return_epoch_log(self):
         return(self.objective_counter, self.error)
-
