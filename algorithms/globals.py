@@ -9,6 +9,8 @@ def_runs = 51
 def_max_fes = 10000
 def_checkpoints = [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 def_smallest_val = 1e-8
+
+# dla original_clamps i def_clamps liczymy bez normalizacji 
 # def_clamps = [-100, 100]
 
 def_clamps = [-1, 1]
@@ -19,10 +21,10 @@ class Evaluation_method():
         self.tested_f = tested_f
         self.objective_f = self.tested_f["func"](ndim=dimension)
         
-        # Skalowanie global_min do zakresu [-1, 1]
-        a, b = original_clamps  # -100, 100
-        c, d = def_clamps       # -1, 1
-        self.global_min_scaled = ((self.tested_f["global_min"] - a) / (b - a)) * (d - c) + c
+        # Skalowanie z zakresu original_clamps do def_clamps
+        a, b = original_clamps
+        c, d = def_clamps
+        self.global_min = self.tested_f["global_min"]
 
     def scale(self, x):
         a, b = def_clamps
@@ -34,7 +36,7 @@ class Evaluation_method():
     def evaluate(self, x):
         x_scaled = self.scale(x)
         Y = self.objective_f.evaluate(x_scaled)
-        error = abs(Y - self.global_min_scaled)
+        error = abs(Y - self.global_min)
         evaluations_used = 1
         return error, evaluations_used
 
