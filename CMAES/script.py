@@ -35,5 +35,5 @@ def run_CMAES(dimension, curr_f, run_id, seed=None, dif_lambd=False):
     return result
 
 
-# globals.gather_data(run_CMAES, "cmaes_clamp")
-globals.gather_data(partial(run_CMAES, dif_lambd=True), "cmaes_clamp_lambd=4m")
+globals.gather_data(run_CMAES, "cmaes_clamp")
+# globals.gather_data(partial(run_CMAES, dif_lambd=True), "cmaes_clamp_lambd=4m")
