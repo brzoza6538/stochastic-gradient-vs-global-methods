@@ -24,15 +24,16 @@ def run_CMAES(dimension, curr_f, run_id, seed=None, dif_lambd=False):
     alg.start()
     log = alg.log
     for checkpoint in log.keys():
+        error_value = log[checkpoint][-1] if log[checkpoint] else None
         result.append({
             "function": curr_f["shortname"],
             "dimension": dimension,
             "run": run_id,
             "checkpoint": checkpoint,
-            "error": log[checkpoint]
-            })
+            "error": error_value
+        })
     return result
 
 
-globals.gather_data(run_CMAES, "cmaes_clamp")
+# globals.gather_data(run_CMAES, "cmaes_clamp")
 globals.gather_data(partial(run_CMAES, dif_lambd=True), "cmaes_clamp_lambd=4m")

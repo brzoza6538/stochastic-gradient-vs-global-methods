@@ -12,11 +12,11 @@ class CMAES:
             min_clamp=def_clamps[0],
             max_clamp=def_clamps[1],
             objective_limit=None,
-            smallest_val=def_smallest_val,
+            smallest_val=def_smallest_val, #smallest_val = 1e-8
             max_fes=def_max_fes,
             checkpoints=def_checkpoints,
             ):
-
+        self.def_smallest_val = def_smallest_val
         self.f_objective = f_objective
         self.dimension = dimension
         self.min_clamp = min_clamp
@@ -28,7 +28,6 @@ class CMAES:
         self.log = {checkpoint: [] for checkpoint in self.checkpoints}
         self.objective_counter = 0
         self.seen_checkpoints = set()
-        # TODO mówił że sigma ma być plus minus jeden - sprawdźczy co i jak
         self.lamb = lamb or int(4 + np.floor(3 * np.log(self.dimension))) # TODO check lamd = 4m
         self.mu = self.lamb // 2
         self.weights = np.log(self.mu + 0.5) - np.log(np.arange(1, self.mu + 1))
@@ -95,16 +94,21 @@ class CMAES:
             + self.cmu * (artmp @ np.diag(self.weights) @ artmp.T)
 
         self.s = self.s * np.exp((self.cs / self.damps) * (np.linalg.norm(self.Ps) / self.chiN - 1))
+        self.s = max(self.s,self.smallest_val)
 
         if self.objective_counter - self.eigeneval > self.lamb / ((self.c1 + self.cmu) * self.dimension / 10):
             self.eigeneval = self.objective_counter
             self.C = np.triu(self.C) + np.triu(self.C, 1).T
+            
+            self.C = np.nan_to_num(self.C, nan=self.smallest_val, posinf=1e9, neginf=-1e9)
+            self.C += np.eye(self.dimension) * self.smallest_val
+
             D_matrix, self.B = np.linalg.eigh(self.C)
             self.D = np.sqrt(np.maximum(D_matrix, self.smallest_val))
 
         self.error = fitness[0]
 
-    def collect_data(self):
+    def collect_data(self): # TODO error dodawany jako lista
         for checkpoint in self.checkpoints:
             checkpoint_fes = int(checkpoint * self.objective_limit)
             if self.error < self.smallest_val and self.objective_counter <= checkpoint_fes:
@@ -113,3 +117,5 @@ class CMAES:
                 self.log[checkpoint].append(0 if self.error < self.smallest_val else self.error)
                 self.seen_checkpoints.add(checkpoint)
 
+
+        # TODO mówił że sigma ma być plus minus jeden - sprawdźczy co i jak
