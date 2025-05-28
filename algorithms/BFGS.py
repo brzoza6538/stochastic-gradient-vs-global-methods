@@ -87,6 +87,8 @@
 # print('Final Result (best point): {}'.format(result))
 # print('Iteration Count: {}'.format(k))
 
+
+#TODO  - dodać bounds 
 from .globals import *
 import numpy as np 
 from scipy.optimize import minimize
@@ -131,20 +133,44 @@ class BFGS():
         else:
             self.x = x
 
+    def project_x(self, x):
+        return np.clip(x, self.min_clamp, self.max_clamp)
+
+
     def wrapped_f_objective(self, x):
+        x_proj = self.project_x(x)
+        if np.any(np.isnan(x_proj)) or np.any(np.isinf(x_proj)):
+            return 1e10
+
         if self.objective_counter >= self.objective_limit:
             raise StopIteration("Objective limit reached.")
 
-        error, evals = self.f_objective(x)
+        try:
+            error, evals = self.f_objective(x_proj)
+        except Exception as e:
+            return 1e10
+
+        if np.isnan(error) or np.isinf(error):
+            return 1e10
+
         self.objective_counter += evals
         self.error = error
         self.collect_data()
-
-        print(self.objective_counter, " / ", self.objective_limit, " -:- ", self.error)
         return error
 
     def wrapped_grad(self, x):
-        grad, evals = self.f_gradient(x)
+        x_proj = self.project_x(x)
+        if np.any(np.isnan(x_proj)) or np.any(np.isinf(x_proj)):
+            return np.zeros_like(x_proj)
+
+        try:
+            grad, evals = self.f_gradient(x_proj)
+        except Exception:
+            return np.zeros_like(x_proj)
+
+        if np.any(np.isnan(grad)) or np.any(np.isinf(grad)):
+            return np.zeros_like(x_proj)
+
         self.objective_counter += evals
         return grad
 
@@ -160,18 +186,15 @@ class BFGS():
                     'maxiter': self.objective_limit,
                     'disp': False
                 },
-                bounds=[(self.min_clamp, self.max_clamp)] * self.dimension
             )
             self.x = result.x
             self.error = result.fun
 
         except StopIteration:
-            # Optimization interrupted by reaching objective_limit
             pass
 
-        # Zapewnij wpisy dla każdego checkpointa
         for checkpoint in self.checkpoints:
-            if len(self.log[checkpoint]) == 0:
+            if self.log[checkpoint] == []:
                 self.log[checkpoint].append(0 if self.error < self.smallest_val else self.error)
 
 

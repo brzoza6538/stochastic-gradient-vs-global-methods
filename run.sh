@@ -3,6 +3,7 @@
 sbatch ./CMAES/run.sh
 sbatch ./Adam/run.sh
 sbatch ./Adagrad/run.sh
+sbatch ./BFGS/run.sh
 
 # squeue -u $USER
 # scancel 
