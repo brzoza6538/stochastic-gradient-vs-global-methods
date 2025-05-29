@@ -1,3 +1,4 @@
+# https://keras.io/api/optimizers/adagrad/
 import numpy as np
 from .globals import *
 
@@ -10,6 +11,9 @@ class Adagrad():
             x=None, 
             E=1e-8,
             B=0.001,
+            initial_accumulator_value=0,
+            use_ema=False,
+            ema_momentum=0.99,
             max_fes=def_max_fes,
             objective_limit=None,
             min_clamp=def_clamps[0],
@@ -27,7 +31,11 @@ class Adagrad():
         self.max_clamp = max_clamp
         self.max_fes = max_fes
 
-        self.G = np.zeros(self.dimension)
+        self.initial_accumulator_value = initial_accumulator_value
+        self.ema_momentum = ema_momentum
+        self.use_ema = use_ema
+        
+        self.G = np.full(self.dimension, self.initial_accumulator_value, dtype=np.float64)
         self.B = B
         self.E = E
 
@@ -57,7 +65,12 @@ class Adagrad():
     def step(self):
         grad, evals_used = self.f_gradient(self.x, E=self.E)
         self.objective_counter += evals_used
-        self.G = self.G + grad**2
+        
+        if self.use_ema:
+            self.G = self.ema_momentum * self.G + (1 - self.ema_momentum) * grad**2
+        else:
+            self.G += grad**2
+
         self.x -= (self.B / np.sqrt(self.G + self.E)) * grad
 
         self.x = np.clip(self.x, self.min_clamp, self.max_clamp)
