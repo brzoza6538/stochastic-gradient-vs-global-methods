@@ -30,5 +30,4 @@ def run_BFGS(dimension, curr_f, run_id, seed=None):
     return result
 
 
-
-globals.gather_data(partial(run_BFGS), "BFGS_clamp_def")
+globals.gather_data(partial(run_BFGS), "L_BFGS_B_clamp")

@@ -22,12 +22,10 @@ class Evaluation_method():
         self.objective_f = self.tested_f["func"](ndim=dimension)
         
         # Skalowanie z zakresu original_clamps do def_clamps
-        a, b = original_clamps
-        c, d = def_clamps
         self.global_min = self.tested_f["global_min"]
 
     def scale(self, x):
-        a, b = def_clamps
+        a, b = def_clamps 
         c, d = original_clamps
 
         x_scaled = ((x - a) / (b - a)) * (d - c) + c
