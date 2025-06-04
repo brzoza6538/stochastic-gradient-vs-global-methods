@@ -18,12 +18,19 @@ rng = np.random.default_rng(0)
 
 from typing import Union
 
-DEFAULT_CMA_OPTIONS: Dict[str, Any] = {
-    "tolfun": 1e-9,
-    "tolfunhist": 1e-9,
-    "tolflatfitness": 3,
-}
+class Eval_wrapper():
+    def __init__(self, f):
+        self.f = f
+    def evaluate(self, x):
+        result, counter = self.f(x)
+        return result
+    
 
+DEFAULT_CMA_OPTIONS: Dict[str, Any] = {
+    "tolfun": 1e-8,
+    "tolfunhist": 1e-8,
+    # "tolflatfitness": 3,
+}
 @dataclass
 class OptFun:
     fun: Callable
@@ -36,7 +43,7 @@ class OptFun:
 
 @dataclass
 class BaseResult:
-    fun: Union[OptFun, CecBenchmark]
+    fun: Union[OptFun, CecBenchmark, Eval_wrapper]
     dim: int
     k: Union[int, None]
     grad_variation: "CMAVariation"
@@ -69,9 +76,11 @@ def gradient_forward(func: Callable, x: np.ndarray, h: float = 1e-3) -> np.ndarr
 
     return grad
 
-def get_function(f: Union[CecBenchmark, OptFun]):
+def get_function(f: Union[CecBenchmark, OptFun, Eval_wrapper]):
     """Common interface for CEC and OptFun functions."""
     if isinstance(f, CecBenchmark):
+        return f.evaluate
+    elif isinstance(f, Eval_wrapper):
         return f.evaluate
     else:
         return f.fun
@@ -101,7 +110,7 @@ class CMAExperimentCallback(ABC):
     def __call__(self, es: CMAEvolutionStrategy):
         pass
 
-def one_dim(fun: Union[OptFun, CecBenchmark], x, d):
+def one_dim(fun: Union[OptFun, CecBenchmark, Eval_wrapper], x, d):
     """Gimmick to make a multdimensional function 1dim
     with a set direction d"""
 
@@ -123,7 +132,7 @@ class CMAVariation(Enum):
 
 def lincmaes(
     x: np.ndarray,
-    fun: Union[OptFun, CecBenchmark],
+    fun: Union[OptFun, CecBenchmark, Eval_wrapper],
     switch_interval: int,
     popsize: int,
     maxevals: Union[int, None] = None,
@@ -149,7 +158,8 @@ def lincmaes(
         inopts["seed"] = seed
 
     x = np.clip(x, def_clamps[0], def_clamps[1])  # TODO - inaczej
-    es = CMAEvolutionStrategy(x, 1, inopts=inopts)
+    sigm = abs(def_clamps[0] - def_clamps[1]) / 3
+    es = CMAEvolutionStrategy(x, sigma0=sigm, inopts=inopts)
 
     while not es.stop():
 
@@ -183,12 +193,17 @@ def lincmaes(
         elif gradient_type == CMAVariation.ANALYTICAL_GRAD_C:
             if isinstance(fun, CecBenchmark):
                 raise ValueError("CecBenchmark does not support analytical gradient")
+            if isinstance(fun, Eval_wrapper):
+                raise ValueError("Eval_wrapper does not support analytical gradient")
             es.countevals += gradient_cost
             d = es.C @ fun.grad(es.mean)
 
         elif gradient_type == CMAVariation.ANALYTICAL_GRAD:
             if isinstance(fun, CecBenchmark):
                 raise ValueError("CecBenchmark does not support analytical gradient")
+            if isinstance(fun, Eval_wrapper):
+                raise ValueError("Eval_wrapper does not support analytical gradient")
+
             es.countevals += gradient_cost
             d = fun.grad(es.mean)
 
@@ -266,7 +281,7 @@ def lincmaes(
 
 def eswrapper(
     x: np.ndarray,
-    fun: Union[OptFun, CecBenchmark],
+    fun: Union[OptFun, CecBenchmark, Eval_wrapper],
     popsize: int,
     maxevals: int,
     variation: CMAVariation = CMAVariation.VANILLA,
@@ -303,22 +318,24 @@ def eswrapper(
         inopts["seed"] = seed
 
     x = np.clip(x, def_clamps[0], def_clamps[1])  # TODO - inaczej
-    es = CMAEvolutionStrategy(x, 1, inopts=inopts)
+    sigm = abs(def_clamps[0] - def_clamps[1]) / 3
+    es = CMAEvolutionStrategy(x, sigma0=sigm, inopts=inopts)
 
     while not es.stop():
         f = get_function(fun)
         try:
             X = es.ask()
+            X = [np.clip(x, def_clamps[0], def_clamps[1]) for x in X]
             fit_vals = [f(x) for x in X]
 
-            if any(np.isnan(fx) or np.isinf(fx) for fx in fit_vals):
+            if any(np.any(np.isnan(fx)) or np.any(np.isinf(fx)) for fx in fit_vals):
                 raise ValueError("Function returned NaN or inf")
 
             es.tell(X, fit_vals)
 
         except ValueError as e:
             with open("error.csv", "a") as file:
-                file.write(f"{fun.name},{es.countevals},{es.mean},{variation},{str(e)}\n")
+                file.write(f"{fun},{es.countevals},{es.mean},{variation},{str(e)}\n")
 
             if callback is not None:
                 callback(es)

@@ -1,6 +1,6 @@
 import numpy as np
 from algorithms import globals
-from algorithms import CMAVariation, CMAExperimentCallback, lincmaes, OptFun, eswrapper
+from algorithms import CMAVariation, CMAExperimentCallback, lincmaes, OptFun, eswrapper, Eval_wrapper 
 
 import time
 from functools import partial
@@ -8,10 +8,8 @@ import numpy as np
 from opfunu.cec_based.cec2014 import F12014  # przykład funkcji CEC (jeśli chcesz)
 from typing import Optional
 
-# def run_CMAES(dimension, curr_f, run_id, seed=None, dif_lambd=False):
 
 def run_cmaes(dimension, curr_f, run_id,  seed=None):
-    f_eval = curr_f["func"](ndim=dimension)
 
     seed = seed or int((time.time() * 1000) + run_id)  # Generujemy nasiono na podstawie czasu i run_id
     seed = seed % (2**32)
@@ -20,6 +18,9 @@ def run_cmaes(dimension, curr_f, run_id,  seed=None):
 
     # switch_interval = 1   # mój kod nie ma switch interval
     popsize = int(4 + np.floor(3 * np.log(dimension)))
+
+    f_eval = Eval_wrapper(globals.Evaluation_method(curr_f, dimension).evaluate)
+
 
     data = eswrapper(
         x=x0,
@@ -30,7 +31,6 @@ def run_cmaes(dimension, curr_f, run_id,  seed=None):
         seed=seed,
         callback=None,
     )
-
 
     result = []
 
@@ -44,7 +44,8 @@ def run_cmaes(dimension, curr_f, run_id,  seed=None):
         closest_checkpoint = data.nums_evals[idx]
 
         if( abs(data.nums_evals[idx] - eval_checkpoint ) < 50 ):
-            closest_value = abs(float(curr_f["global_min"]) - data.best_values[idx])
+            # closest_value = abs(float(curr_f["global_min"]) - data.midpoint_values[idx])
+            closest_value = data.best_values[idx]
             result.append({
                 "function": curr_f["shortname"],
                 "dimension": dimension,
@@ -67,3 +68,7 @@ def run_cmaes(dimension, curr_f, run_id,  seed=None):
 
 globals.gather_data(partial(run_cmaes), "mbien_cmaes")
 
+
+# dimension = 50
+# results = run_cmaes(dimension, globals.CEC2013[0], 0)
+# print(results)

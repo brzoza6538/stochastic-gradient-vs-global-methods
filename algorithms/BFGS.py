@@ -161,17 +161,18 @@ class BFGS():
 
     def start(self):
         try:
+            bounds = [(self.min_clamp, self.max_clamp)] * self.dimension
             result = minimize(
                 self.wrapped_f_objective,
                 self.x,
                 method='L-BFGS-B',
                 jac=self.wrapped_grad,
+                bounds=bounds,
                 options={
                     'maxiter': self.objective_limit,
                     'disp': False
                 },
-            )
-            bounds = (self.min_clamp, self.max_clamp) * self.dimension
+            )            
             self.x = result.x
             self.error = result.fun
 
