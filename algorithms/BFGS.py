@@ -195,3 +195,107 @@ class BFGS():
 
     def return_epoch_log(self):
         return self.objective_counter, self.error
+
+
+
+
+class classic_BFGS():
+    def __init__(
+            self,
+            f_objective,
+            f_gradient,
+            dimension,
+            x=None,
+            max_fes=def_max_fes,
+            objective_limit=None,
+            min_clamp=def_clamps[0],
+            max_clamp=def_clamps[1],
+            checkpoints=def_checkpoints,
+            smallest_val=def_smallest_val
+            ):
+
+        self.f_objective = f_objective
+        self.f_gradient = f_gradient
+        self.dimension = dimension
+        self.max_fes = max_fes
+        self.min_clamp = min_clamp
+        self.max_clamp = max_clamp
+        self.checkpoints = checkpoints
+        self.smallest_val = smallest_val
+
+        self.log = {checkpoint: [] for checkpoint in self.checkpoints}
+        self.seen_checkpoints = set()
+
+        self.objective_counter = 0
+        self.error = None
+
+        if objective_limit is None:
+            self.objective_limit = self.dimension * self.max_fes
+        else:
+            self.objective_limit = objective_limit
+
+        if x is None:
+            self.x = np.random.uniform(self.min_clamp, self.max_clamp, size=self.dimension)
+        else:
+            self.x = x
+
+    def project_x(self, x):
+        return np.clip(x, self.min_clamp, self.max_clamp)
+
+
+    def wrapped_f_objective(self, x):
+        x_proj = self.project_x(x)
+
+        if self.objective_counter >= self.objective_limit:
+            raise StopIteration("Objective limit reached.")
+
+        error, evals = self.f_objective(x_proj)
+
+        self.objective_counter += evals
+        self.error = error
+        self.collect_data()
+        return error
+
+    def wrapped_grad(self, x):
+        x_proj = self.project_x(x)
+
+        grad, evals = self.f_gradient(x_proj)
+
+        self.objective_counter += evals
+        return grad
+
+
+    def start(self):
+        try:
+            result = minimize(
+                self.wrapped_f_objective,
+                self.x,
+                method='BFGS',
+                jac=self.wrapped_grad,
+                options={
+                    'maxiter': self.objective_limit,
+                    'disp': False
+                },
+            )            
+            self.x = result.x
+            self.error = result.fun
+
+        except StopIteration:
+            pass
+
+        for checkpoint in self.checkpoints:
+            if self.log[checkpoint] == []:
+                self.log[checkpoint].append(0 if self.error < self.smallest_val else self.error)
+
+
+    def collect_data(self):
+        for checkpoint in self.checkpoints:
+            checkpoint_fes = int(checkpoint * self.objective_limit)
+
+            if checkpoint not in self.seen_checkpoints and self.objective_counter >= checkpoint_fes:
+                self.log[checkpoint].append(0 if self.error < self.smallest_val else self.error)
+                self.seen_checkpoints.add(checkpoint)
+
+
+    def return_epoch_log(self):
+        return self.objective_counter, self.error
