@@ -264,7 +264,7 @@ class classic_BFGS():
         self.objective_counter += evals
         return grad
 
-
+# TODO - clamp -> constraint
     def start(self):
         try:
             result = minimize(
