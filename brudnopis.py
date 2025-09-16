@@ -5,7 +5,15 @@ def_smallest_val = 1e9
 import random
 import numpy as np
 import math
+
 RETRIES = 25
+
+RESAMPLING = True
+RESAMPLING_TRIALS_LIMIT = 100
+NUM_OF_TRIALS_BEFORE_F_CHANGE = 10
+
+COUNT_LIMITS = True
+MIN_ITERATIONS_ON_BOUND = 9
 
 class NL_SHADE_RSP_MID():
     def __init__(
@@ -47,7 +55,6 @@ class NL_SHADE_RSP_MID():
 
         self.memory_Cr = [0.2] * self.memory_size
         self.memory_F = [0.2] * self.memory_size
-        self.memory_current_index = 0
         self.current_archive_size = 0
 
         if(X is None):
@@ -63,6 +70,10 @@ class NL_SHADE_RSP_MID():
         #ArchProbs
         self.arch_use_prob = 0.5
         self.arch_usages = [0] * self.pop_size
+        #populLimCount
+        self.popul_lim_count = [0] * self.pop_size
+        self.temp_pop = [0] * self.pop_size
+
 
 #TODO pamiętaj że f_objective zwraca już różnicę między optimum a aktualnym
 
@@ -71,6 +82,27 @@ class NL_SHADE_RSP_MID():
             self.final_best_fit = self.Fitmass[index]
             self.final_best_sol = self.X[index]
 
+    # not IsInfeasable 
+    def check_if_in_range(self, index):
+        for j in range(self.dimension):
+            if self.temp_pop[index][j] < self.min_clamp or self.temp_pop[index][j] > self.max_clamp:
+                return False
+        return True
+
+    def count_broken_limits_streak(self, index):
+        on_bound = False
+        for j in range(self.dimension):
+            if self.temp_pop[j] < self.min_clamp or self.temp_pop[j] > self.max_clamp:
+                self.popul_lim_count[index] += 1
+                return
+            
+        self.popul_lim_count = 0
+        return 
+                
+    def fix_point_the_hard_way(self, index):
+        for j in range(self.dimension):
+            if self.temp_pop[index][j] < self.min_clamp or self.temp_pop[index][j] > self.max_clamp:
+                self.temp_pop[index][j] = random.uniform()
 
     def check_generated(self, num, rand_points_3, cur_indx):
         if(rand_points_3[num] == cur_indx):
@@ -104,9 +136,11 @@ class NL_SHADE_RSP_MID():
                break
 
     def main_cycle(self):
+        #poulTemp
+        self.temp_pop = [[None for j in range(self.dimension)] for i in range(self.pop_size)]        
+
         mean_indiv = [0] * self.dimension
         mean_indiv_old = [0] * self.dimension
-        popul_lim_count = [0] * self.pop_size
         num_of_stagIt=0
         rand_points_3 = [None, None, None]
         for cur_indx in range(self.pop_size):
@@ -116,15 +150,15 @@ class NL_SHADE_RSP_MID():
         while(self.objective_counter < self.objective_limit):
 
             self.FitmassCopy = self.Fitmass
-            Indexes = np.arange(len(FitmassCopy))
+            indexes = np.arange(len(FitmassCopy))
 
             if(np.max(self.Fitmass) != np.min(self.Fitmass)):
                 sort_idx = np.argsort(FitmassCopy)
                 FitmassCopy = FitmassCopy[sort_idx]
-                Indexes = Indexes[sort_idx]
+                indexes = indexes[sort_idx]
 
-                BackIndexes = np.empty_like(Indexes)
-                for j, idx in enumerate(Indexes):
+                BackIndexes = np.empty_like(indexes)
+                for j, idx in enumerate(indexes):
                     BackIndexes[idx] = j
                 
                 # FitTemp3
@@ -134,33 +168,36 @@ class NL_SHADE_RSP_MID():
 
                 psizeval = max(2.0,self.pop_size*(0.2/self.max_fes*self.objective_counter+0.2))
                 
-                CrossExponential = 0
+                cross_exponential = 0
                 if(random(0,1) < 0.5):
-                    CrossExponential = 1
+                    cross_exponential = 1
 
                 generated_F = []
                 generated_Cr = []
+                # TODO - check in later next to TODO - second 235
                 for cur_indx in range(self.pop_size):
-                    self.memory_current_index = random.randrange(self.memory_size)
-                    Cr = min(1.0,max(0.0,random.uniform(self.memory_Cr[self.memory_current_index],0.1)))
+                    memory_current_index = random.randrange(self.memory_size)
+                    Cr = min(1.0,max(0.0,random.uniform(self.memory_Cr[memory_current_index],0.1)))
                     while True:
-                        F = self.memory_F[self.memory_current_index] + 0.1 * np.random.standard_cauchy()
+                        F = self.memory_F[memory_current_index] + 0.1 * np.random.standard_cauchy()
                         if(F > 0):
                             break
                     generated_F.append(min(F,1.0))
                     generated_Cr.append(Cr)
             generated_Cr.sort()
 
+
+# main-main loop
             for cur_indx in range(self.pop_size):
-                rand_points_3[0] = Indexes[random.randrange(psizeval)]
+                rand_points_3[0] = indexes[random.randrange(psizeval)]
                 for i in range(RETRIES):
                     if self.check_generated(0, rand_points_3, cur_indx):
                         break
-                    rand_points_3[0] = Indexes[random.randrange(psizeval)]
+                    rand_points_3[0] = indexes[random.randrange(psizeval)]
                 
                 self.generate_rand(1, rand_points_3, cur_indx)
 
-                if(random.uniform(0, 1) > self.arch_use_prob or self.current_archive_size == 0):
+                if(random.random() > self.arch_use_prob or self.current_archive_size == 0):
                     #ComponentSelector3
                     for i in range(RETRIES):
                         rand_points_3[2] = random.choices(range(self.pop_size), weights=fit_temp3)[0]
@@ -172,15 +209,143 @@ class NL_SHADE_RSP_MID():
                     self.generate_rand_archive_only(2, rand_points_3, cur_indx)
                     self.arch_usages[cur_indx] = 1
                 
-                Donor = [] * self.dimension
+                donor = [] * self.dimension
                 for j in range(self.dimension):
-                    Donor[j] = (
+                    donor[j] = (
                         self.population[cur_indx][j] + 
                         generated_F[cur_indx] * (self.population[rand_points_3[0]][j] - self.population[cur_indx][j]) + 
                         generated_F[cur_indx] * (self.population[rand_points_3[1]][j] - self.population[rand_points_3[2]][j])
                         )
                 # zmiana po ustawieniu 
+
                 F = generated_F[cur_indx]
+                Cr = generated_Cr[BackIndexes[cur_indx]]
+
+                will_crossover = random.randrange(self.dimension)
+                
+                Cr_to_use = 0
+                if self.objective_counter > (0.5 * self.max_fes):
+                    Cr_to_use = (self.objective_counter/self.max_fes - 0.5) * 2
+
+                if cross_exponential == 0:
+                    for j in range(self.dimension):
+                        if random.random() < Cr_to_use or will_crossover == j:
+                            self.temp_pop[cur_indx][j] = donor[j]
+                        else: 
+                            self.temp_pop[cur_indx][j] = self.population[cur_indx][j]
+                else:
+                    start_loc = random.uniform(self.dimension)
+                    L = start_loc + 1
+
+                    while random.random() < Cr and L < self.dimension:
+                        L += 1
+                    for j in range(self.dimension):
+                            self.temp_pop[cur_indx][j] = self.population[cur_indx][j]
+
+                    for j in range(start_loc, L):
+                        self.temp_pop[cur_indx][j] = donor[j]
+                
+######################### REASAMPLING
+                if RESAMPLING:
+                    used_repair = False
+                    num_of_trials = 1
+
+                    # TODO - rework used_repair
+                    while(not self.check_if_in_range(cur_indx) and num_of_trials<=RESAMPLING_TRIALS_LIMIT):
+                        used_repair = True
+                        if num_of_trials>NUM_OF_TRIALS_BEFORE_F_CHANGE:
+                            # TODO - second 235
+                            cross_exponential = 0
+                            if(random.random() < 0.5):
+                                cross_exponential = 1
+                            
+                            memory_current_index = random.uniform(self.memory_size)
+
+                            Cr = min(1.0,max(0.0,random.uniform(self.memory_Cr[memory_current_index],0.1)))
+                            while True:
+                                F = self.memory_F[memory_current_index] + 0.1 * np.random.standard_cauchy()
+                                if(F > 0):
+                                    break
+                            generated_F[cur_indx](min(F,1.0))
+                            generated_Cr[cur_indx](Cr)
+                        
+                        # TODO duplication - make into a func?
+                        rand_points_3[0] = indexes[random.uniform(psizeval)]
+
+                        for i in range(RETRIES):
+                            if self.check_generated(0, rand_points_3, cur_indx):
+                                break
+                            rand_points_3[0] = indexes[random.randrange(psizeval)]
+                        
+                        self.generate_rand(1, rand_points_3, cur_indx)
+
+                        if(random.random() > self.arch_use_prob or self.current_archive_size == 0):
+                            #ComponentSelector3
+                            for i in range(RETRIES):
+                                rand_points_3[2] = random.choices(range(self.pop_size), weights=fit_temp3)[0]
+                                if self.check_generated(2, rand_points_3, cur_indx):
+                                    break
+                            # TODO - necessary if starts as zeroes everywhere?
+                            self.arch_usages[cur_indx] = 0
+                        else:
+                            self.generate_rand_archive_only(2, rand_points_3, cur_indx)
+                            self.arch_usages[cur_indx] = 1
+
+                        donor = [] * self.dimension
+                        for j in range(self.dimension):
+                            donor[j] = (
+                                self.population[cur_indx][j] + 
+                                generated_F[cur_indx] * (self.population[rand_points_3[0]][j] - self.population[cur_indx][j]) + 
+                                generated_F[cur_indx] * (self.population[rand_points_3[1]][j] - self.population[rand_points_3[2]][j])
+                                )
+                        # TODO duplication - make into a func? ^
+
+                        F = generated_F[cur_indx]
+                        Cr = generated_Cr[BackIndexes[cur_indx]]
+                        will_crossover = random.randrange(self.dimension)
+                        Cr_to_use = 0
+
+                        if self.objective_counter > (0.5 * self.max_fes):
+                            Cr_to_use = (self.objective_counter/self.max_fes - 0.5) * 2
+
+                        if cross_exponential == 0:
+                            for j in range(self.dimension):
+                                if random.random() < Cr_to_use or will_crossover == j:
+                                    self.temp_pop[cur_indx][j] = donor[j]
+                                else: 
+                                    self.temp_pop[cur_indx][j] = self.population[cur_indx][j]
+                        else:
+                            start_loc = random.uniform(self.dimension)
+                            L = start_loc + 1
+
+                            while random.random() < Cr and L < self.dimension:
+                                L += 1
+
+                            for j in range(self.dimension):
+                                    self.temp_pop[cur_indx][j] = self.population[cur_indx][j]
+                            for j in range(start_loc, L):
+                                self.temp_pop[cur_indx][j] = donor[j]
+                        
+                        num_of_trials += 1
+
+                        if(not self.check_if_in_range(cur_indx)):
+                            used_repair = False
+                            self.fix_point_the_hard_way(cur_indx)
+######################### ^RESAMPLING end 
+
+######################### COUNT LIMITS  - part of RESAMPLING
+                    if COUNT_LIMITS:
+                        if self.popul_lim_count[cur_indx]>MIN_ITERATIONS_ON_BOUND:
+                            return
+######################### ^COUNT LIMITS end 
+
+                print("whyyyyy")
+
+
+
+# ######################### COUNT LIMITS  - part of RESAMPLING
+#                     if COUNT_LIMITS:
+
 
 # ComponentSelector3 brak
 # Rands[2] = random.choices(range(popSize), weights=fit_temp3)[0]
