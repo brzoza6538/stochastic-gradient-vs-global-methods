@@ -5,7 +5,19 @@ def_smallest_val = 1e9
 import random
 import numpy as np
 import math
+import copy
 
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
+
+
+from .algorithms.globals import *
+
+
+MIN_POP_SIZE = 4
+ARCHIVE_SIZE_PARAM = 2.1
+
+# TODO - dlaczego oznacza F jako constant VScode? - cos zlego to moze zrobic?
 RETRIES = 25
 
 RESAMPLING = True
@@ -15,6 +27,12 @@ NUM_OF_TRIALS_BEFORE_F_CHANGE = 10
 COUNT_LIMITS = True
 MIN_ITERATIONS_ON_BOUND = 9
 
+K_MEANS_AS_NEAREST = True
+MAX_K = 2
+MIN_POP_SIZE_4_SPLIT = 20
+MIN_DIST = 1e-9
+MAX_NUM_OF_STAG_IT = 7
+
 class NL_SHADE_RSP_MID():
     def __init__(
             self,
@@ -23,7 +41,7 @@ class NL_SHADE_RSP_MID():
             X=None,
             pop_size=None,
             memory_size=None,
-            archive_size=None,
+            archive_size_param=None,
             max_fes=def_max_fes,
             objective_limit=None,
             min_clamp=def_clamps[0],
@@ -41,17 +59,28 @@ class NL_SHADE_RSP_MID():
         self.smallest_val = smallest_val
         self.objective_counter = 0
 
+        self.log = {checkpoint: [] for checkpoint in self.checkpoints}
+
         self.pop_size = pop_size or self.dimension * 5
         self.memory_size = memory_size or self.dimension * 20
-        self.archive_size = archive_size or self.dimension * self.pop_size
-        
+
+        self.archive_size_param = archive_size_param or ARCHIVE_SIZE_PARAM
+        self.archive_size = self.dimension * math.ceil(self.archive_size_param)
+
         #[populant][wymiar]
-        self.population = [[random.uniform(self.min_clamp, self.max_clamp) for j in range(self.dimension)] for i in range(self.pop_size)]        
+        self.population = [[random.uniform(self.min_clamp, self.max_clamp) for j in range(self.dimension)] for i in range(self.max_pop_size)]        
+        self.archive = [[random.uniform(self.min_clamp, self.max_clamp) for j in range(self.dimension)] for i in range(self.max_pop_size*math.ceil(self.archive_size_param))]        
 
-        self.Fitmass = [0] * self.pop_size
-
+        self.fitmass = [0] * self.pop_size
+        self.max_pop_size = self.pop_size
+        #bestSOL
         self.final_best_sol = None
+        # globalBestFit
         self.final_best_fit = None
+
+        self.iter_best_fit = None
+        self.iter_best_indx = None
+
 
         self.memory_Cr = [0.2] * self.memory_size
         self.memory_F = [0.2] * self.memory_size
@@ -72,14 +101,73 @@ class NL_SHADE_RSP_MID():
         self.arch_usages = [0] * self.pop_size
         #populLimCount
         self.popul_lim_count = [0] * self.pop_size
+        # populTemp
         self.temp_pop = [0] * self.pop_size
+
+        self.pop_fit_tmp = [0] * self.pop_size
+
+        self.memory_iter = 0
+        self.success_counter = 0
+
+        self.temp_success_cr = []
+        self.temp_success_f = []
+        self.temp_success_fit_delta = []
+        
+
+        self.mean_indiv = [0] * self.dimension
+        self.mean_indiv_old = [0] * self.dimension
+        self.num_of_stag_it = 0
+
+        self.generation = 0
+
+    def save_success_cr_f(self, Cr, F, FitD):
+        self.temp_success_cr.append(Cr)
+        self.temp_success_f.append(F)
+        self.temp_success_fit_delta.append(FitD)
+        # SuccessFilled
+        self.success_counter += 1
+
+    def update_memory_cr_f(self):
+        if self.success_counter != 0:
+            self.memory_Cr[self.memory_iter] = self.mean_wl_general[self.temp_success_cr, self.temp_success_fit_delta, self.success_counter, 2, 1]
+            self.memory_F[self.memory_iter] = self.mean_wl_general[self.temp_success_f, self.temp_success_fit_delta, self.success_counter, 2, 1]
+            self.memory_iter += 1
+            
+            if self.memory_iter >= self.memory_size:
+                self.memory_iter = 0
+        else:
+            self.memory_F[self.memory_iter] = 0.5
+            self.memory_Cr[self.memory_iter] = 0.5
+
+    def mean_wl_general(self, Vector, TempWeights, SuccessFilled, g_p, g_m):
+        vec = Vector[:SuccessFilled]
+        weights_raw = TempWeights[:SuccessFilled]
+        
+        sum_weight = np.sum(weights_raw)
+        if sum_weight > 0:
+            weights = weights_raw / sum_weight
+        else:
+            weights = np.ones_like(weights_raw) / len(weights_raw)  
+
+        SumSquare = np.sum(weights * np.power(vec, g_p))
+        Sum = np.sum(weights * np.power(vec, g_p - g_m))
+        
+        if abs(Sum) > 1e-6:
+            return SumSquare / Sum
+        else:
+            return 0.5
+
+    def get_val(self, index, j):
+            if(index < self.pop_size):
+                return self.population[index][j]
+            return self.archive[index-self.pop_size][j]
 
 
 #TODO pamiętaj że f_objective zwraca już różnicę między optimum a aktualnym
 
     def check_point(self, index): # FindNSaveBest
-        if(self.final_best_fit is None or self.Fitmass[index] < self.final_best_fit):
-            self.final_best_fit = self.Fitmass[index]
+        if(self.final_best_fit is None or self.fitmass[index] < self.final_best_fit):
+            self.final_best_fit = self.fitmass[index]
             self.final_best_sol = self.X[index]
 
     # not IsInfeasable 
@@ -98,11 +186,11 @@ class NL_SHADE_RSP_MID():
             
         self.popul_lim_count = 0
         return 
-                
-    def fix_point_the_hard_way(self, index):
+                # FindLimits
+    def fix_point_the_hard_way(self, individual):
         for j in range(self.dimension):
-            if self.temp_pop[index][j] < self.min_clamp or self.temp_pop[index][j] > self.max_clamp:
-                self.temp_pop[index][j] = random.uniform()
+            if individual[j] < self.min_clamp or individual[j] > self.max_clamp:
+                individual[j] = random.uniform(self.min_clamp, self.max_clamp)
 
     def check_generated(self, num, rand_points_3, cur_indx):
         if(rand_points_3[num] == cur_indx):
@@ -124,7 +212,6 @@ class NL_SHADE_RSP_MID():
             if(not generate_again):
                break
 
-    # TODO -  archiwum to część pamięci dopisana na końcu populacji - nie lepiej osobno... tak normalnie po ludzku?
     def generate_rand_archive_only(self, num, rand_points_3, cur_indx):
         for j in range(RETRIES):
             generate_again = False
@@ -135,26 +222,65 @@ class NL_SHADE_RSP_MID():
             if(not generate_again):
                break
 
+    def copy_to_archive(self, individual):
+        if self.current_archive_size < self.archive_size:
+            self.archive[self.current_archive_size] = individual.copy()
+            self.current_archive_size += 1
+
+        elif self.archive_size > 0:
+            to_go = random.randrange(self.archive_size)
+            self.archive[to_go] = individual.copy()
+
+
+
+    def collect_data(self): #SaveBestValues
+        for checkpoint in self.checkpoints:
+            checkpoint_fes = int(checkpoint * self.objective_limit)
+            
+            if self.error < self.smallest_val and self.objective_counter <= checkpoint_fes:
+                self.log[checkpoint].append(0)
+
+            if checkpoint not in self.seen_checkpoints and self.objective_counter >= checkpoint_fes:
+                self.log[checkpoint].append(0 if self.error < self.smallest_val else self.error)
+                self.seen_checkpoints.add(checkpoint)
+
+    def remove_worst_from_pop(self, new_size):
+        points_to_remove = self.pop_size - new_size
+
+        for L in range(points_to_remove):
+            worst_ind = 0
+            worst_fit = self.fitmass[worst_ind]
+
+            for i in range(1, self.pop_size):
+                if self.fitmass[i] > worst_fit:
+                    worst_fit = self.fitmass[i]
+                    worst_ind = i
+            
+            for i in range(worst_ind, self.pop_size-1):
+                for j in range(self.dimension):
+                    self.population[i][j] = self.population[i+1][j]
+                self.fitmass[i] = self.fitmass[i+1]
+            
+        
+
     def main_cycle(self):
-        #poulTemp
+        #populTemp
         self.temp_pop = [[None for j in range(self.dimension)] for i in range(self.pop_size)]        
 
-        mean_indiv = [0] * self.dimension
-        mean_indiv_old = [0] * self.dimension
-        num_of_stagIt=0
         rand_points_3 = [None, None, None]
         for cur_indx in range(self.pop_size):
-            self.Fitmass[cur_indx] = self.f_objective(self.X[cur_indx])
+            self.fitmass[cur_indx], evals_used = self.f_objective(self.X[cur_indx])
+            self.objective_counter += evals_used
             self.check_point(cur_indx)
 
-        while(self.objective_counter < self.objective_limit):
+        while(self.objective_counter < self.objective_limit) and (self.final_best_fit is None or self.final_best_fit > self.smallest_val):
 
-            self.FitmassCopy = self.Fitmass
-            indexes = np.arange(len(FitmassCopy))
+            self.fitmass_copy = self.fitmass
+            indexes = np.arange(len(fitmass_copy))
 
-            if(np.max(self.Fitmass) != np.min(self.Fitmass)):
-                sort_idx = np.argsort(FitmassCopy)
-                FitmassCopy = FitmassCopy[sort_idx]
+            if(np.max(self.fitmass) != np.min(self.fitmass)):
+                sort_idx = np.argsort(fitmass_copy)
+                fitmass_copy = fitmass_copy[sort_idx]
                 indexes = indexes[sort_idx]
 
                 BackIndexes = np.empty_like(indexes)
@@ -213,8 +339,8 @@ class NL_SHADE_RSP_MID():
                 for j in range(self.dimension):
                     donor[j] = (
                         self.population[cur_indx][j] + 
-                        generated_F[cur_indx] * (self.population[rand_points_3[0]][j] - self.population[cur_indx][j]) + 
-                        generated_F[cur_indx] * (self.population[rand_points_3[1]][j] - self.population[rand_points_3[2]][j])
+                        generated_F[cur_indx] * (self.get_val(rand_points_3[0], j) - self.get_val(cur_indx,j)) + 
+                        generated_F[cur_indx] * (self.get_val(rand_points_3[1], j) - self.get_val(rand_points_3[2],j))
                         )
                 # zmiana po ustawieniu 
 
@@ -295,8 +421,8 @@ class NL_SHADE_RSP_MID():
                         for j in range(self.dimension):
                             donor[j] = (
                                 self.population[cur_indx][j] + 
-                                generated_F[cur_indx] * (self.population[rand_points_3[0]][j] - self.population[cur_indx][j]) + 
-                                generated_F[cur_indx] * (self.population[rand_points_3[1]][j] - self.population[rand_points_3[2]][j])
+                                generated_F[cur_indx] * (self.get_val(rand_points_3[0], j) - self.population[cur_indx][j]) + 
+                                generated_F[cur_indx] * (self.get_val(rand_points_3[1], j) - self.get_val(rand_points_3[2], j))
                                 )
                         # TODO duplication - make into a func? ^
 
@@ -330,7 +456,7 @@ class NL_SHADE_RSP_MID():
 
                         if(not self.check_if_in_range(cur_indx)):
                             used_repair = False
-                            self.fix_point_the_hard_way(cur_indx)
+                            self.fix_point_the_hard_way(self.temp_pop[cur_indx])
 ######################### ^RESAMPLING end 
 
 ######################### COUNT LIMITS  - part of RESAMPLING
@@ -339,14 +465,168 @@ class NL_SHADE_RSP_MID():
                             return
 ######################### ^COUNT LIMITS end 
 
-                print("whyyyyy")
+                # TODO - pamiętaj od razu zwraca error - żeby nie trzeba było podawać tu optFit
+                self.pop_fit_tmp[cur_indx], evals_used = self.f_objective(self.temp_pop[cur_indx])
+                self.objective_counter += evals_used
 
+                if not self.iter_best_fit or (self.pop_fit_tmp[cur_indx] < self.iter_best_fit):
+                    self.iter_best_fit = self.pop_fit_tmp[cur_indx]
+                    self.iter_best_indx = cur_indx
+                
+                    if not self.final_best_fit or (self.pop_fit_tmp[cur_indx] < self.final_best_fit):
+                        # TODO - whyyyyy the double copy???
+                        self.iter_best_fit = self.pop_fit_tmp[cur_indx]
+                        self.final_best_sol = copy.deepcopy(self.pop_fit_tmp[cur_indx])
 
+                        # if self.pop_fit_tmp[cur_indx] <= self.smallest_val:
+                        #     return(self.objective_counter, self.final_best_sol)
 
-# ######################### COUNT LIMITS  - part of RESAMPLING
-#                     if COUNT_LIMITS:
+                if self.pop_fit_tmp[cur_indx] < self.fitmass[cur_indx]:
+                    self.save_success_cr_f(Cr, F, self.fitmass[cur_indx] - self.pop_fit_tmp[cur_indx])
 
+                self.check_point(cur_indx)
+                min
+                # if(self.objective_counter > self.max_fes):
+                #     return(self.objective_counter, self.final_best_sol)
+######################### K_MEANS_AS_NEAREST 
+                if K_MEANS_AS_NEAREST:  
 
+                    min_sil_score = 1/(4*math.sqrt(self.dimension))
+
+                    best_silhouette = None 
+                    best_k = None
+                    best_assignments = None
+                    best_centroids = None
+
+                    data = copy.deepcopy(self.temp_pop)
+                    for cand_k in range(2, MAX_K + 1):
+                        kmeans = KMeans(n_clusters=cand_k, n_init='auto')
+                        assignments = kmeans.fit_predict(data)
+                        centroids = kmeans.cluster_centers_
+
+                        silhouette = silhouette_score(data, assignments, metric='euclidean')
+
+                        if best_silhouette is None or silhouette > best_silhouette:
+                            best_silhouette = silhouette
+                            best_k = cand_k
+                            best_assignments = assignments
+                            best_centroids = centroids
+                    
+
+                    bestCandFit = None
+                    
+                    if best_silhouette > min_sil_score and self.pop_size >= MIN_POP_SIZE_4_SPLIT:
+                        for k in range(best_k):
+                            for i in range(self.dimension):
+                                self.mean_indiv = best_centroids[k]
+                                self.fix_point_the_hard_way(self.mean_indiv)
+
+                            fit_mean, evals_used = self.f_objective(self.mean_indiv)
+                            self.objective_counter += evals_used
+                            
+                            if bestCandFit is None or fit_mean < bestCandFit:
+                                bestCandFit = fit_mean
+                            
+                            if self.final_best_fit is None or fit_mean < self.final_best_fit:
+                                self.final_best_fit = fit_mean
+                                self.final_best_sol = copy.deepcopy(self.mean_indiv)
+                            
+                    else:
+                        #if kmean works too bad
+                        self.mean_indiv = np.mean(self.temp_pop, axis=0)
+                        self.fix_point_the_hard_way(self.mean_indiv)
+                        
+                        fit_mean, evals_used = self.f_objective(self.mean_indiv)
+                        self.objective_counter += evals_used
+
+                        if self.final_best_fit is None or fit_mean < self.final_best_fit:
+                            self.final_best_fit = fit_mean
+                            self.final_best_sol = copy.deepcopy(self.mean_indiv)
+
+                    # switch closest point to it, into mean
+                    # TODO - why in resampling?
+                    chosen_indx = np.argmin(np.linalg.norm(self.temp_pop - self.mean_indiv, axis=1))
+                    if fit_mean < self.pop_fit_tmp[chosen_indx]:
+                        self.pop_fit_tmp[chosen_indx] = fit_mean
+                        self.pop_fit_tmp[chosen_indx] = self.mean_indiv.copy()
+
+                    # TODO - why check for stagnation in kmeans segment?
+                    self.mean_indiv = np.mean(self.temp_pop, axis=0)
+                    dist = np.linalg.norm(self.mean_indiv_old - self.mean_indiv)
+                    if dist < MIN_DIST:
+                        self.num_of_stag_it += 1
+                        if self.num_of_stag_it > MAX_NUM_OF_STAG_IT:
+                            return 
+                    else:
+                        self.num_of_stag_it = 0
+
+                    self.mean_indiv_old = self.mean_indiv
+
+######################### ^ K_MEANS_AS_NEAREST  end
+
+                    # ArchSuccess
+                    archiv_succ = 0
+                    no_archiv_succ = 0
+                    arch_usages_counter = 0
+                    
+                    for cur_indx in range(self.pop_size):
+                        if(self.pop_fit_tmp[cur_indx] <= self.fitmass[cur_indx]):
+                            if self.arch_usages[cur_indx] == 1: 
+                                archiv_succ += (self.fitmass[cur_indx] - self.pop_fit_tmp[cur_indx]) / self.fitmass[cur_indx]
+                                arch_usages_counter += 1
+                            else:
+                                no_archiv_succ += (self.fitmass[cur_indx] - self.pop_fit_tmp[cur_indx]) / self.fitmass[cur_indx]
+                            
+                            self.copy_to_archive(self.population[cur_indx])
+                        
+                        # TODO - was this to avoid troubles if previous if changes pop_fit_tmp or just a mistake?
+                        if(self.pop_fit_tmp[cur_indx] <= self.fitmass[cur_indx]):
+                            self.population[cur_indx] = self.temp_pop[cur_indx]
+                            self.fitmass = self.pop_fit_tmp
+                    
+                    if arch_usages_counter != 0:
+                        archiv_succ = archiv_succ/arch_usages_counter
+                        no_archiv_succ = no_archiv_succ / (self.pop_size - arch_usages_counter)
+
+                        self.arch_use_prob = archiv_succ / (archiv_succ + no_archiv_succ)
+                        self.arch_use_prob = max(0.1, min(0.9, self.arch_use_prob))
+                        if archiv_succ == 0:
+                            self.arch_use_prob = 0.5
+                    else:
+                        self.arch_use_prob = 0.5
+                    
+                    newNInds = round((MIN_POP_SIZE-self.max_pop_size)*pow((self.objective_counter/self.max_fes),(1.0-self.objective_counter/self.max_fes))+self.max_pop_size)
+                    
+                    if(newNInds < MIN_POP_SIZE):
+                        newNInds = MIN_POP_SIZE
+                    if(newNInds > self.max_pop_size):
+                        newNInds = self.max_pop_size
+
+                    new_arch_size = round((MIN_POP_SIZE-self.max_pop_size)*pow((self.objective_counter/self.max_fes),(1.0-self.objective_counter/self.max_fes))+self.max_pop_size)*self.archive_size_param
+
+                    if(new_arch_size < MIN_POP_SIZE):
+                        new_arch_size = MIN_POP_SIZE
+                    if self.current_archive_size >= new_arch_size:
+                        self.archive = self.archive[:new_arch_size]
+                        self.current_archive_size = new_arch_size
+
+                    self.archive_size = new_arch_size
+                    self.remove_worst_from_pop(newNInds)
+
+                    self.pop_size = newNInds
+
+                    self.update_memory_cr_f()
+                    
+                    self.success_counter = 0
+                    self.generation += 1
+
+                    self.collect_data()
+
+# TODO - does doing objective this way makes sense?
+# TODO - pamiętaj że collect data zmieniłeś żeby robiło na końcu każdej pętli
+# TODO - pamiętaj że sprawdza czy najlepszy wynik jest mniejszy od smallest val i wychodzi dopiero pod koniec pętli a nie w trakcie jak wcześniej
+# max_fes to 10 000 - ile może zmienić dokończenie pętli z populacją dimension * 5
+# TODO - check every var you init with none
 # ComponentSelector3 brak
 # Rands[2] = random.choices(range(popSize), weights=fit_temp3)[0]
 
