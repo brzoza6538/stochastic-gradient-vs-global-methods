@@ -9,9 +9,15 @@ from sklearn.metrics import silhouette_score
 
 from globals import *
 
-CR_SIZE_PARAM = 0.2
+CR_SIZE_PARAM = 0.1
+CR_MIN = 0.0
+MAX_F = 1.0
+CAUCHY_F_SIZE = 0.1
+F_INIT = 0.2
+CR_INIT = 0.2
+
 # TODO - uses lists - the rest algos use np.arrays
-MIN_POP_SIZE = 5
+MIN_POP_SIZE = 10
 ARCHIVE_SIZE_PARAM = 2.1
 PSIZEVAL_RANGE = [0.2, 0.2] 
 PSIZEVAL_MIN = 2.0
@@ -26,8 +32,8 @@ MIN_ITERATIONS_ON_BOUND = 9
 
 K_MEANS_AS_NEAREST = True #####################
 MAX_K = 2
-MIN_POP_SIZE_4_SPLIT = 20
-MIN_DIST = 1e-3
+MIN_POP_SIZE_4_SPLIT = 4
+MIN_DIST = 1e-5
 MAX_NUM_OF_STAG_IT = 7
 
 class NL_SHADE_RSP_MID():
@@ -60,7 +66,7 @@ class NL_SHADE_RSP_MID():
 
         self.log = {checkpoint: [] for checkpoint in self.checkpoints}
 
-        self.pop_size = pop_size or self.dimension * 5
+        self.pop_size = pop_size or self.dimension * 10
         self.memory_size = memory_size or self.dimension * 20
 
         self.archive_size_param = archive_size_param or ARCHIVE_SIZE_PARAM
@@ -82,8 +88,8 @@ class NL_SHADE_RSP_MID():
         self.succ_log = []
         self.AAA = 0 
 
-        self.memory_Cr = [0.2] * self.memory_size
-        self.memory_F = [0.2] * self.memory_size
+        self.memory_Cr = [CR_INIT] * self.memory_size
+        self.memory_F = [F_INIT] * self.memory_size
         self.current_archive_size = 0
         
         # self.population
@@ -255,7 +261,7 @@ class NL_SHADE_RSP_MID():
                 self.log[checkpoint].append(0)
 
             if checkpoint not in self.seen_checkpoints and self.objective_counter >= checkpoint_fes:
-                self.log[checkpoint].append(0 if self.final_best_fit < self.smallest_val else self.final_best_fit)
+                self.log[checkpoint].append(0 if self.final_best_fit < self.smallest_val else (self.AAA, self.final_best_fit))
                 self.seen_checkpoints.add(checkpoint)
 
     # RemoveWorst
@@ -345,12 +351,12 @@ class NL_SHADE_RSP_MID():
             # TODO - check in later next to TODO - second 235
             for cur_indx in range(self.pop_size):
                 memory_current_index = random.randrange(self.memory_size)
-                Cr = min(1.0,max(0.0,random.uniform(self.memory_Cr[memory_current_index],CR_SIZE_PARAM)))
+                Cr = min(1.0,max(CR_MIN,random.uniform(self.memory_Cr[memory_current_index],CR_SIZE_PARAM)))
                 while True:
-                    F = self.memory_F[memory_current_index] + 0.1 * np.random.standard_cauchy()
+                    F = self.memory_F[memory_current_index] + CAUCHY_F_SIZE * np.random.standard_cauchy()
                     if(F > 0):
                         break
-                generated_F.append(min(F,1.0))
+                generated_F.append(min(F,MAX_F))
                 generated_Cr.append(Cr)
                 
             generated_Cr.sort()
@@ -399,6 +405,7 @@ class NL_SHADE_RSP_MID():
 
             will_crossover = random.randrange(self.dimension)
             
+            # zwiększ krzyżowanie na więcej niż jedno tylko w drugiej połowie
             Cr_to_use = 0
             if self.objective_counter > (0.5 * self.objective_limit):
                 Cr_to_use = (self.objective_counter/self.objective_limit - 0.5) * 2
@@ -438,12 +445,12 @@ class NL_SHADE_RSP_MID():
                         
                         memory_current_index = random.randrange(self.memory_size)
 
-                        Cr = min(1.0,max(0.0,random.uniform(self.memory_Cr[memory_current_index],CR_SIZE_PARAM)))
+                        Cr = min(1.0,max(CR_MIN,random.uniform(self.memory_Cr[memory_current_index],CR_SIZE_PARAM)))
                         while True:
-                            F = self.memory_F[memory_current_index] + 0.1 * np.random.standard_cauchy()
+                            F = self.memory_F[memory_current_index] + CAUCHY_F_SIZE * np.random.standard_cauchy()
                             if(F > 0):
                                 break
-                        generated_F[cur_indx] = min(F,1.0)
+                        generated_F[cur_indx] = min(F,MAX_F)
                         generated_Cr[cur_indx] = Cr
                     
                     # TODO duplication - make into a func?
@@ -517,6 +524,7 @@ class NL_SHADE_RSP_MID():
 ##################### COUNT LIMITS  - part of RESAMPLING
                 if COUNT_LIMITS:
                     if self.popul_lim_count[cur_indx]>MIN_ITERATIONS_ON_BOUND:
+                        print("\COUNT_LIMITS\n")
                         return True
 ##################### ^COUNT LIMITS end 
 
@@ -616,6 +624,7 @@ class NL_SHADE_RSP_MID():
             if dist < MIN_DIST:
                 self.num_of_stag_it += 1
                 if self.num_of_stag_it > MAX_NUM_OF_STAG_IT:
+                    print("\nSTAGNANT\n")
                     return True
             else:
                 self.num_of_stag_it = 0
