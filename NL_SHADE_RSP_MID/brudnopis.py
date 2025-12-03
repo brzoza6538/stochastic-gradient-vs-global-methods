@@ -103,7 +103,7 @@ def run_nl_shade(dimension, curr_f, checkpoints):
     x = np.random.uniform(def_clamps[0], def_clamps[1], size=dimension)
     eval = Evaluation_method(curr_f, dimension)
 
-    alg = NL_SHADE_RSP_MID(f_objective=eval.evaluate, dimension=dimension, checkpoints=checkpoints)  # max_fes=2000
+    alg = NL_SHADE_RSP_MID(f_objective=eval.evaluate, dimension=dimension, checkpoints=checkpoints, pop_size=2000)  # max_fes=2000
 
     alg.start()
 
@@ -120,13 +120,13 @@ def run_nl_shade(dimension, curr_f, checkpoints):
         
     print(result)
 
-    # print("------------------------------\n")
-    # print(alg.memory_Cr)
-    # print("------------------------------\n")
-    # print(alg.memory_F)
-    # print("------------------------------\n")
-    # print(alg.succ_log)
-    # print("------------------------------\n")
+    print("------------------------------\n")
+    print(alg.memory_Cr)
+    print("------------------------------\n")
+    print(alg.memory_F)
+    print("------------------------------\n")
+    print(alg.succ_log)
+    print("------------------------------\n")
 
     return result
 
@@ -139,7 +139,7 @@ import multiprocessing as mp
 import os
 
 def_runs = 1
-def_checkpoints = [0.0001, 0.001, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+def_checkpoints = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 def_smallest_val = 1e-8
 
 def gather_data(algorithm, algo_name):

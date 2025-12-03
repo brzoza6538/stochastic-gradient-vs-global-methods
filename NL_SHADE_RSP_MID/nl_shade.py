@@ -9,7 +9,7 @@ from sklearn.metrics import silhouette_score
 
 from globals import *
 
-CR_SIZE_PARAM = 0.1
+CR_SIZE_PARAM = 0.5
 CR_MIN = 0.0
 MAX_F = 1.0
 CAUCHY_F_SIZE = 0.1
@@ -17,7 +17,7 @@ F_INIT = 0.2
 CR_INIT = 0.2
 
 # TODO - uses lists - the rest algos use np.arrays
-MIN_POP_SIZE = 10
+MIN_POP_SIZE = 2000  # działa dla 2000
 ARCHIVE_SIZE_PARAM = 2.1
 PSIZEVAL_RANGE = [0.2, 0.2] 
 PSIZEVAL_MIN = 2.0
@@ -617,10 +617,11 @@ class NL_SHADE_RSP_MID():
             #     self.temp_pop[chosen_indx] = self.mean_indiv.copy()
 
             # TODO - why check for stagnation in kmeans segment?
-            self.AAA = (fit_mean, self.mean_indiv)
 
             self.mean_indiv = np.mean(self.temp_pop, axis=0)
             dist = np.linalg.norm(self.mean_indiv_old - self.mean_indiv)
+            self.AAA = (fit_mean, dist)
+
             if dist < MIN_DIST:
                 self.num_of_stag_it += 1
                 if self.num_of_stag_it > MAX_NUM_OF_STAG_IT:
