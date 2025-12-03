@@ -9,11 +9,11 @@ from sklearn.metrics import silhouette_score
 
 from globals import *
 
-CR_SIZE_PARAM = 0.9
+CR_SIZE_PARAM = 0.2
 # TODO - uses lists - the rest algos use np.arrays
 MIN_POP_SIZE = 5
 ARCHIVE_SIZE_PARAM = 2.1
-PSIZEVAL_RANGE = [0.5, 0.5] 
+PSIZEVAL_RANGE = [0.2, 0.2] 
 PSIZEVAL_MIN = 2.0
 RETRIES = 25
 
@@ -27,7 +27,7 @@ MIN_ITERATIONS_ON_BOUND = 9
 K_MEANS_AS_NEAREST = True #####################
 MAX_K = 2
 MIN_POP_SIZE_4_SPLIT = 20
-MIN_DIST = 1e-9
+MIN_DIST = 1e-3
 MAX_NUM_OF_STAG_IT = 7
 
 class NL_SHADE_RSP_MID():
@@ -60,7 +60,7 @@ class NL_SHADE_RSP_MID():
 
         self.log = {checkpoint: [] for checkpoint in self.checkpoints}
 
-        self.pop_size = pop_size or self.dimension * 10
+        self.pop_size = pop_size or self.dimension * 5
         self.memory_size = memory_size or self.dimension * 20
 
         self.archive_size_param = archive_size_param or ARCHIVE_SIZE_PARAM
@@ -76,10 +76,12 @@ class NL_SHADE_RSP_MID():
         self.final_best_fit = None
 
         self.iter_best_fit = None
-        self.iter_best_indx = [None] * self.dimension
+        self.iter_best_sol = [None] * self.dimension
 
-
+        #TODO - remove later
+        self.succ_log = []
         self.AAA = 0 
+
         self.memory_Cr = [0.2] * self.memory_size
         self.memory_F = [0.2] * self.memory_size
         self.current_archive_size = 0
@@ -172,7 +174,7 @@ class NL_SHADE_RSP_MID():
         if(self.iter_best_fit is None or self.fitmass[index] < self.iter_best_fit):
             self.iter_best_fit = self.fitmass[index]
 
-            self.iter_best_indx = self.X[index] # TODO - po co iter_best_indx?
+            self.iter_best_sol = copy.deepcopy(self.X[index]) # TODO - po co iter_best_indx?
 
         if self.final_best_fit is None or self.iter_best_fit < self.final_best_fit:
             self.final_best_fit = self.iter_best_fit
@@ -185,15 +187,15 @@ class NL_SHADE_RSP_MID():
                 return False
         return True
 
-    def count_broken_limits_streak(self, index):
-        on_bound = False
-        for j in range(self.dimension):
-            if self.temp_pop[j] < self.min_clamp or self.temp_pop[j] > self.max_clamp:
-                self.popul_lim_count[index] += 1
-                return
+    # def count_broken_limits_streak(self, index):
+    #     on_bound = False
+    #     for j in range(self.dimension):
+    #         if self.temp_pop[j] < self.min_clamp or self.temp_pop[j] > self.max_clamp:
+    #             self.popul_lim_count[index] += 1
+    #             return
             
-        self.popul_lim_count = 0
-        return 
+    #     self.popul_lim_count = 0
+    #     return 
                 # FindLimits
     def fix_point_the_hard_way(self, individual):
         for j in range(self.dimension):
@@ -253,8 +255,7 @@ class NL_SHADE_RSP_MID():
                 self.log[checkpoint].append(0)
 
             if checkpoint not in self.seen_checkpoints and self.objective_counter >= checkpoint_fes:
-                self.log[checkpoint].append(0 if self.final_best_fit < self.smallest_val else (self.AAA, self.final_best_fit))
-                # self.mean_indiv, self.final_best_sol
+                self.log[checkpoint].append(0 if self.final_best_fit < self.smallest_val else self.final_best_fit)
                 self.seen_checkpoints.add(checkpoint)
 
     # RemoveWorst
@@ -288,7 +289,7 @@ class NL_SHADE_RSP_MID():
         self.fitmass = [self.fitmass[i] for i in best_indices]
 
         # ustaw pop_size na faktyczny rozmiar listy
-        self.pop_size = len(self.X)
+        self.pop_size = best_indices
 
 
 
@@ -304,11 +305,12 @@ class NL_SHADE_RSP_MID():
             self.objective_counter += evals_used
             self.check_point(cur_indx)
 
+        end = False 
         loop = 0
-        while(self.objective_counter < self.objective_limit) and (self.final_best_fit is None or self.final_best_fit > self.smallest_val):
+        while(self.objective_counter < self.objective_limit) and (self.final_best_fit is None or self.final_best_fit > self.smallest_val) and not end:
             loop += 1
             print("loop : ", loop, "obj cntr: ", self.objective_counter, "poop_size: ", self.pop_size)
-            self.step()
+            end = self.step()
             self.collect_data()
 
 
@@ -515,18 +517,18 @@ class NL_SHADE_RSP_MID():
 ##################### COUNT LIMITS  - part of RESAMPLING
                 if COUNT_LIMITS:
                     if self.popul_lim_count[cur_indx]>MIN_ITERATIONS_ON_BOUND:
-                        return
+                        return True
 ##################### ^COUNT LIMITS end 
 
             # TODO - pamiętaj od razu zwraca error - żeby nie trzeba było podawać tu optFit
             self.pop_fit_tmp[cur_indx], evals_used = self.f_objective(self.temp_pop[cur_indx])
             self.objective_counter += evals_used
 
-            if not self.iter_best_fit or (self.pop_fit_tmp[cur_indx] < self.iter_best_fit):
+            if self.iter_best_fit is None or (self.pop_fit_tmp[cur_indx] < self.iter_best_fit):
                 self.iter_best_fit = self.pop_fit_tmp[cur_indx]
-                self.iter_best_indx = cur_indx
+                self.iter_best_sol = copy.deepcopy(self.X[cur_indx])
             
-                if not self.final_best_fit or (self.pop_fit_tmp[cur_indx] < self.final_best_fit):
+                if self.final_best_fit is None or (self.pop_fit_tmp[cur_indx] < self.final_best_fit):
                     self.iter_best_fit = self.pop_fit_tmp[cur_indx]
                     self.final_best_sol = copy.deepcopy(self.temp_pop[cur_indx])
 
@@ -537,7 +539,6 @@ class NL_SHADE_RSP_MID():
                 self.save_success_cr_f(Cr, F, self.fitmass[cur_indx] - self.pop_fit_tmp[cur_indx])
 
             self.check_point(cur_indx)
-            min
             # if(self.objective_counter > self.max_fes):
             #     return(self.objective_counter, self.final_best_sol)
 ##################### K_MEANS_AS_NEAREST 
@@ -602,19 +603,20 @@ class NL_SHADE_RSP_MID():
             # switch closest point to it, into mean
             # TODO - why in resampling?
 
-            chosen_indx = np.argmin(np.linalg.norm(self.temp_pop - self.mean_indiv, axis=1))
-            if fit_mean < self.pop_fit_tmp[chosen_indx]:
-                self.pop_fit_tmp[chosen_indx] = fit_mean
-                self.temp_pop[chosen_indx] = self.mean_indiv.copy()
+            # chosen_indx = np.argmin(np.linalg.norm(self.temp_pop - self.mean_indiv, axis=1))
+            # if fit_mean < self.pop_fit_tmp[chosen_indx]:
+            #     self.pop_fit_tmp[chosen_indx] = fit_mean
+            #     self.temp_pop[chosen_indx] = self.mean_indiv.copy()
+
             # TODO - why check for stagnation in kmeans segment?
+            self.AAA = (fit_mean, self.mean_indiv)
+
             self.mean_indiv = np.mean(self.temp_pop, axis=0)
             dist = np.linalg.norm(self.mean_indiv_old - self.mean_indiv)
-            self.AAA = fit_mean
             if dist < MIN_DIST:
                 self.num_of_stag_it += 1
-                print("wwwwwwwwwwooooooooooooooooo")
                 if self.num_of_stag_it > MAX_NUM_OF_STAG_IT:
-                    return 
+                    return True
             else:
                 self.num_of_stag_it = 0
 
@@ -630,7 +632,7 @@ class NL_SHADE_RSP_MID():
         for cur_indx in range(self.pop_size):
 
 
-            if(self.pop_fit_tmp[cur_indx] <= self.fitmass[cur_indx]):
+            if(self.pop_fit_tmp[cur_indx] < self.fitmass[cur_indx]):
                 if self.arch_usages[cur_indx] == 1: 
                     archiv_succ += (self.fitmass[cur_indx] - self.pop_fit_tmp[cur_indx]) / self.fitmass[cur_indx]
                     arch_usages_counter += 1
@@ -647,8 +649,8 @@ class NL_SHADE_RSP_MID():
         
         if arch_usages_counter != 0:
             archiv_succ = archiv_succ/arch_usages_counter
-            if no_archiv_succ != self.pop_size - arch_usages_counter:
-                no_archiv_succ = no_archiv_succ / (self.pop_size - arch_usages_counter)
+                
+            no_archiv_succ = no_archiv_succ / (self.pop_size - arch_usages_counter)
             
             self.arch_use_prob = archiv_succ / (archiv_succ + no_archiv_succ)
             self.arch_use_prob = max(0.1, min(0.9, self.arch_use_prob))
@@ -694,8 +696,7 @@ class NL_SHADE_RSP_MID():
         if(newNInds > self.max_pop_size):
             newNInds = self.max_pop_size
 
-        new_arch_size = round(((MIN_POP_SIZE-self.max_pop_size)*pow((self.objective_counter/self.objective_limit),(1.0-self.objective_counter/self.objective_limit))+self.max_pop_size)*self.archive_size_param)
-
+        new_arch_size = round(((MIN_POP_SIZE-self.max_pop_size)*pow((self.objective_counter/self.objective_limit),(1.0-self.objective_counter/self.objective_limit))+(self.max_pop_size * self.archive_size_param)))
         
         if(new_arch_size < MIN_POP_SIZE):
             new_arch_size = MIN_POP_SIZE
@@ -709,10 +710,13 @@ class NL_SHADE_RSP_MID():
         self.pop_size = newNInds
 
         self.update_memory_cr_f()
-        
+
+        # TODO - remove later
+        self.succ_log.append(self.success_counter)
         self.success_counter = 0
         self.generation += 1
 
+        return False
             
 # TODO - pamiętaj że collect data zmieniłeś żeby robiło na końcu każdej pętli
 # TODO - pamiętaj że sprawdza czy najlepszy wynik jest mniejszy od smallest val i wychodzi dopiero pod koniec pętli a nie w trakcie jak wcześniej
