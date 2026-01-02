@@ -4,7 +4,7 @@ sbatch ./CMAES/run.sh
 sbatch ./Adam/run.sh
 sbatch ./Adagrad/run.sh
 sbatch ./BFGS/run.sh
-sbatch ./mbien_cmaes/run.sh
+sbatch ./cmaes/run.sh
 
 # squeue -u $USER
 # scancel 

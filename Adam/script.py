@@ -29,12 +29,12 @@ def run_Adam(dimension, curr_f, run_id, seed=None, lr=0.01, B1=0.9, B2=0.999):
             })
     return result
 
-globals.gather_data(partial(run_Adam, lr=0.01, B1=0.9, B2=0.999), "adam_clamp_lr=0.01_B1=0.9_B2=0.999_t2")
+# globals.gather_data(partial(run_Adam, lr=0.01, B1=0.9, B2=0.999), "adam_clamp_lr=0.01_B1=0.9_B2=0.999_t2")
 
-globals.gather_data(partial(run_Adam, lr=0.01, B1=0.9, B2=0.999), "adam_clamp_lr=0.01_B1=0.9_B2=0.999")
+# globals.gather_data(partial(run_Adam, lr=0.01, B1=0.9, B2=0.999), "adam_clamp_lr=0.01_B1=0.9_B2=0.999")
 globals.gather_data(partial(run_Adam, lr=0.01, B1=0.8, B2=0.99), "adam_clamp_lr=0.01_B1=0.8_B2=0.99")
-globals.gather_data(partial(run_Adam, lr=0.001, B1=0.9, B2=0.999), "adam_clamp_lr=0.001_B1=0.9_B2=0.999")
-globals.gather_data(partial(run_Adam, lr=0.001, B1=0.8, B2=0.99), "adam_clamp_lr=0.001_B1=0.8_B2=0.99")
+# globals.gather_data(partial(run_Adam, lr=0.001, B1=0.9, B2=0.999), "adam_clamp_lr=0.001_B1=0.9_B2=0.999")
+# globals.gather_data(partial(run_Adam, lr=0.001, B1=0.8, B2=0.99), "adam_clamp_lr=0.001_B1=0.8_B2=0.99")
 
 
-# globals.gather_data(partial(run_Adam, lr=0.01, B1=0.9, B2=0.999), "adam_norm_graddiv_lr=0.01_B1=0.9_B2=0.999")
+# # globals.gather_data(partial(run_Adam, lr=0.01, B1=0.9, B2=0.999), "adam_norm_graddiv_lr=0.01_B1=0.9_B2=0.999")

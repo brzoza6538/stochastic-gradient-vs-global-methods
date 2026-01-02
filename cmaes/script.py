@@ -66,7 +66,7 @@ def run_cmaes(dimension, curr_f, run_id,  seed=None):
 
     return result
 
-globals.gather_data(partial(run_cmaes), "mbien_cmaes")
+globals.gather_data(partial(run_cmaes), "cmaes")
 
 
 # dimension = 50
