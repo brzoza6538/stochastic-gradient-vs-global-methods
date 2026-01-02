@@ -175,7 +175,7 @@ class NL_SHADE_RSP_MID():
         if(self.iter_best_fit is None or self.fitmass[index] < self.iter_best_fit):
             self.iter_best_fit = self.fitmass[index]
 
-            self.iter_best_sol = copy.deepcopy(self.X[index]) # TODO - po co iter_best_indx?
+            self.iter_best_sol = copy.deepcopy(self.temp_pop[index]) # TODO - po co iter_best_indx?
 
         if self.final_best_fit is None or self.iter_best_fit < self.final_best_fit:
             self.final_best_fit = self.iter_best_fit
@@ -188,15 +188,16 @@ class NL_SHADE_RSP_MID():
                 return False
         return True
 
-    # def count_broken_limits_streak(self, index):
-    #     on_bound = False
-    #     for j in range(self.dimension):
-    #         if self.temp_pop[j] < self.min_clamp or self.temp_pop[j] > self.max_clamp:
-    #             self.popul_lim_count[index] += 1
-    #             return
+    def count_broken_limits_streak(self, index):
+        for j in range(self.dimension):
+            if self.temp_pop[index][j] < self.min_clamp or self.temp_pop[index][j] > self.max_clamp:
+                self.popul_lim_count += 1
+                return
             
-    #     self.popul_lim_count = 0
-    #     return 
+        self.popul_lim_count = 0
+        return 
+    
+
                 # FindLimits
     def fix_point_the_hard_way(self, individual):
         for j in range(self.dimension):
@@ -290,7 +291,7 @@ class NL_SHADE_RSP_MID():
         self.fitmass = [self.fitmass[i] for i in best_indices]
 
         # ustaw pop_size na faktyczny rozmiar listy
-        self.pop_size = best_indices
+        self.pop_size = new_size
 
 
 
@@ -353,7 +354,7 @@ class NL_SHADE_RSP_MID():
                 generated_F.append(min(F,MAX_F))
                 generated_Cr.append(Cr)
                 
-            generated_Cr.sort()
+            # generated_Cr.sort() # #ZAPYTAJ dlaczego tak to było?
 
 
 # main-main loop
@@ -395,7 +396,7 @@ class NL_SHADE_RSP_MID():
 
             # self.fix_point_the_hard_way(donor)
             F = generated_F[cur_indx]
-            Cr = generated_Cr[BackIndexes[cur_indx]]
+            Cr = generated_Cr[cur_indx]
 
             will_crossover = random.randrange(self.dimension)
             
@@ -517,7 +518,9 @@ class NL_SHADE_RSP_MID():
 
 ##################### COUNT LIMITS  - part of RESAMPLING
                 if COUNT_LIMITS:
-                    if self.popul_lim_count[cur_indx]>MIN_ITERATIONS_ON_BOUND:
+                    self.count_broken_limits_streak(cur_indx)
+
+                    if self.popul_lim_count>MIN_ITERATIONS_ON_BOUND:
                         print("\COUNT_LIMITS\n")
                         return True
 ##################### ^COUNT LIMITS end 
@@ -528,7 +531,7 @@ class NL_SHADE_RSP_MID():
 
             if self.iter_best_fit is None or (self.pop_fit_tmp[cur_indx] < self.iter_best_fit):
                 self.iter_best_fit = self.pop_fit_tmp[cur_indx]
-                self.iter_best_sol = copy.deepcopy(self.X[cur_indx])
+                self.iter_best_sol = copy.deepcopy(self.temp_pop[cur_indx])
             
                 if self.final_best_fit is None or (self.pop_fit_tmp[cur_indx] < self.final_best_fit):
                     self.iter_best_fit = self.pop_fit_tmp[cur_indx]
