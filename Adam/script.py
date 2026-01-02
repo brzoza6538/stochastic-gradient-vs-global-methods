@@ -17,8 +17,11 @@ def run_Adam(dimension, curr_f, run_id, seed=None, lr=0.01, B1=0.9, B2=0.999):
     eval = globals.Evaluation_method(curr_f, dimension)
 
     alg = Adam(eval.evaluate, eval.gradient, dimension, x=x, lr=lr, B1=B1, B2=B2)
+    
     alg.start()
+
     log = alg.log
+
     for checkpoint in log.keys():
         result.append({
             "function": curr_f["shortname"],

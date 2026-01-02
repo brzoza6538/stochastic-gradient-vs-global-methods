@@ -1,12 +1,10 @@
 import numpy as np
 from algorithms import globals
-from algorithms import CMAVariation, CMAExperimentCallback, lincmaes, OptFun, eswrapper, Eval_wrapper 
+from algorithms import CMAVariation, eswrapper, Eval_wrapper 
 
 import time
 from functools import partial
 import numpy as np
-from opfunu.cec_based.cec2014 import F12014  # przykład funkcji CEC (jeśli chcesz)
-from typing import Optional
 
 
 def run_cmaes(dimension, curr_f, run_id,  seed=None):
@@ -16,7 +14,7 @@ def run_cmaes(dimension, curr_f, run_id,  seed=None):
 
     x0 = np.random.uniform(globals.def_clamps[0], globals.def_clamps[1], size=dimension)
 
-    # switch_interval = 1   # mój kod nie ma switch interval
+    # switch_interval = 1
     popsize = int(4 + np.floor(3 * np.log(dimension)))
 
     f_eval = Eval_wrapper(globals.Evaluation_method(curr_f, dimension).evaluate)

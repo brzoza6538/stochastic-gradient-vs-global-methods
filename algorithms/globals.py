@@ -25,6 +25,7 @@ class Evaluation_method():
         self.global_min = self.tested_f["global_min"]
 
     def scale(self, x):
+        x = np.asarray(x, dtype=float)
         a, b = def_clamps 
         c, d = original_clamps
 
@@ -121,7 +122,7 @@ def gather_data(algorithm, algo_name):
 CEC2013 = [
     {"shortname": "F12013", "name": "Sphere Function", "func": cec.F12013, "global_min": -1400},
     {"shortname": "F22013", "name": "Rotated High Conditioned Elliptic Function", "func": cec.F22013, "global_min": -1300},
-    # {"shortname": "F32013", "name": "Rotated Bent Cigar Function", "func": cec.F32013, "global_min": -1200},
+    {"shortname": "F32013", "name": "Rotated Bent Cigar Function", "func": cec.F32013, "global_min": -1200},
     # {"shortname": "F42013", "name": "Rotated Discus Function", "func": cec.F42013, "global_min": -1100},
     # {"shortname": "F52013", "name": "Different Powers Function", "func": cec.F52013, "global_min": -1000},
     # {"shortname": "F62013", "name": "Rotated Rosenbrock’s Function", "func": cec.F62013, "global_min": -900},
