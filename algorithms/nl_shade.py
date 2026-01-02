@@ -83,10 +83,6 @@ class NL_SHADE_RSP_MID():
         self.iter_best_fit = None
         self.iter_best_sol = [None] * self.dimension
 
-        #TODO - remove later
-        self.succ_log = []
-        self.AAA = 0 
-
         self.memory_Cr = [CR_INIT] * self.memory_size
         self.memory_F = [F_INIT] * self.memory_size
         self.current_archive_size = 0
@@ -260,7 +256,7 @@ class NL_SHADE_RSP_MID():
                 self.log[checkpoint].append(0)
 
             if checkpoint not in self.seen_checkpoints and self.objective_counter >= checkpoint_fes:
-                self.log[checkpoint].append(0 if self.final_best_fit < self.smallest_val else (self.AAA, self.final_best_fit))
+                self.log[checkpoint].append(0 if self.final_best_fit < self.smallest_val else self.final_best_fit)
                 self.seen_checkpoints.add(checkpoint)
 
     # RemoveWorst
@@ -314,7 +310,6 @@ class NL_SHADE_RSP_MID():
         loop = 0
         while(self.objective_counter < self.objective_limit) and (self.final_best_fit is None or self.final_best_fit > self.smallest_val) and not end:
             loop += 1
-            print("loop : ", loop, "obj cntr: ", self.objective_counter, "poop_size: ", self.pop_size)
             end = self.step()
             self.collect_data()
 
@@ -618,7 +613,6 @@ class NL_SHADE_RSP_MID():
 
             self.mean_indiv = np.mean(self.temp_pop, axis=0)
             dist = np.linalg.norm(self.mean_indiv_old - self.mean_indiv)
-            self.AAA = (fit_mean, dist)
 
             if dist < MIN_DIST:
                 self.num_of_stag_it += 1
@@ -719,8 +713,6 @@ class NL_SHADE_RSP_MID():
 
         self.update_memory_cr_f()
 
-        # TODO - remove later
-        self.succ_log.append(self.success_counter)
         self.success_counter = 0
         self.generation += 1
 
