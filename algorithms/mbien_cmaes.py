@@ -149,7 +149,7 @@ def lincmaes(
     if get_step_information:
         golden_step_x, golden_step_sizes, regular_step_sizes = [], [], []
 
-    inopts = {}
+    inopts = {'restarts': 'IPOP'}
     if popsize:
         inopts["popsize"] = popsize
     if maxevals:
@@ -310,6 +310,8 @@ def eswrapper(
     best_values = []
 
     inopts = DEFAULT_CMA_OPTIONS.copy()
+    inopts["restarts"] = "IPOP"
+
     if popsize:
         inopts["popsize"] = popsize
     if maxevals:
