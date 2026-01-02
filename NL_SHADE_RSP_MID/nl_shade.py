@@ -616,7 +616,6 @@ class NL_SHADE_RSP_MID():
             #     self.pop_fit_tmp[chosen_indx] = fit_mean
             #     self.temp_pop[chosen_indx] = self.mean_indiv.copy()
 
-            # TODO - why check for stagnation in kmeans segment?
 
             self.mean_indiv = np.mean(self.temp_pop, axis=0)
             dist = np.linalg.norm(self.mean_indiv_old - self.mean_indiv)

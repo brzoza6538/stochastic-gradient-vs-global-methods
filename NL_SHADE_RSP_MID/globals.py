@@ -25,15 +25,17 @@ class Evaluation_method():
         self.global_min = self.tested_f["global_min"]
 
     def scale(self, x):
-        a, b = def_clamps 
-        c, d = original_clamps
+        # a, b = def_clamps 
+        # c, d = original_clamps
 
-        x_scaled = ((x - a) / (b - a)) * (d - c) + c
-        return x_scaled 
+        # x_scaled = ((x - a) / (b - a)) * (d - c) + c
+        # return x_scaled 
+        return x
 
     def evaluate(self, x):
         x_scaled = self.scale(x)
-        Y = self.objective_f.evaluate(x_scaled)
+        # Y = self.objective_f.evaluate(x_scaled)
+        Y = x_scaled[0]*x_scaled[0] + x_scaled[1]*x_scaled[1]
         error = abs(Y - self.global_min)
         evaluations_used = 1
         return error, evaluations_used

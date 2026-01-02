@@ -66,6 +66,7 @@ class Adagrad():
         grad, evals_used = self.f_gradient(self.x, E=self.E)
         self.objective_counter += evals_used
         
+        # TODO - unused for now
         if self.use_ema:
             self.G = self.ema_momentum * self.G + (1 - self.ema_momentum) * grad**2
         else:
