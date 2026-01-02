@@ -783,7 +783,6 @@ void Optimizer::MainCycle(double optFit)
                 Rands[0] = Indexes[intRandom(psizeval)];
             GenerateNextRandUnif(1,popSize,Rands,curIndx);
 
-// TODO - pointer  
             if(Random(0,1) > ArchProbs || CurrentArchiveSize == 0)
             {
                 Rands[2] = Indexes[ComponentSelector3(generator)];
@@ -802,6 +801,9 @@ void Optimizer::MainCycle(double optFit)
                     FGenerated[curIndx]*(GetValue(Rands[1],popSize,j) - GetValue(Rands[2],popSize,j));
 
             F = FGenerated[curIndx];//Corrected F
+
+
+
             int WillCrossover = intRandom(NVars);
             Cr = CrGenerated[BackIndexes[curIndx]];
             double CrToUse = 0;
@@ -830,6 +832,7 @@ void Optimizer::MainCycle(double optFit)
                 for(int j=StartLoc;j!=L;j++)
                     populTemp[curIndx][j] = Donor[j];
             }
+// TODO - pointer
 #ifdef RESAMPLING            
             const int MAX_NUM_OF_TRIALS=100;
             int num_of_trials=1;
@@ -931,10 +934,11 @@ if(populLimCount[curIndx]>MIN_ITS_ON_BOUND){
 #endif            
 
             popFitTmp[curIndx] = cec_22_(populTemp[curIndx],func_num);
-            // if(popFitTmp[curIndx] < iterBestFit){
-            //   iterBestFit = popFitTmp[curIndx];
-            //   iterBestIndx=curIndx;
+            if(popFitTmp[curIndx] < iterBestFit){
+              iterBestFit = popFitTmp[curIndx];
+              iterBestIndx=curIndx;
             }
+
             if(popFitTmp[curIndx] <= globalBestFit){
                 globalBestFit = popFitTmp[curIndx];
                 memcpy(bestSol, populTemp[curIndx], dimensionality*sizeof(double));
@@ -1093,6 +1097,8 @@ if(populLimCount[curIndx]>MIN_ITS_ON_BOUND){
         ArchSuccess = 0;
         NoArchSuccess = 0;
         NArchUsages = 0;
+        
+        ///////////////////////////////////////
         for(int curIndx=0;curIndx!=popSize;curIndx++)
         {
             if(popFitTmp[curIndx] <= Fitmass[curIndx])
@@ -1113,6 +1119,8 @@ if(populLimCount[curIndx]>MIN_ITS_ON_BOUND){
                 Fitmass[curIndx] = popFitTmp[curIndx];
             }
         }
+
+        ///////////////////////////////////////
         if(NArchUsages != 0)
         {
             ArchSuccess = ArchSuccess/NArchUsages;
