@@ -1,7 +1,6 @@
 import numpy as np
 from algorithms import globals
 from algorithms import Adam
-from algorithms import NormAdam
 
 import time
 from functools import partial

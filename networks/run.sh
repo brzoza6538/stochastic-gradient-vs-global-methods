@@ -1,5 +1,5 @@
 #!/bin/bash -l
-#SBATCH -J C_network
+#SBATCH -J networks
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=26
 #SBATCH --mem=1GB
@@ -9,10 +9,11 @@
 #SBATCH --error="networks/error.log"
 
 
+
 BASE_DIR=~/$(basename $SLURM_SUBMIT_DIR)
 
 cd $SLURM_SUBMIT_DIR
 source $BASE_DIR/.venv/bin/activate
 export PYTHONPATH=$PYTHONPATH:$BASE_DIR
 cd networks
-python3 CMAES.py
+python3 comparison.py

@@ -100,6 +100,10 @@ class CMAResult(BaseResult):
     best_values: np.ndarray
     nums_evals: np.ndarray
 
+    midpoint_solutions: np.ndarray   
+    best_solutions: np.ndarray       
+
+
     @staticmethod
     def highest_eval_count(results: "Iterable[list[CMAResult]]"):
         return max(r.nums_evals[-1] for result in results for r in result)
@@ -145,11 +149,13 @@ def lincmaes(
     midpoint_values = []
     evals_values = []
     best_values = []
+    midpoint_solutions = []
+    best_solutions = []
 
     if get_step_information:
         golden_step_x, golden_step_sizes, regular_step_sizes = [], [], []
 
-    inopts = {'restarts': 'IPOP'}
+    inopts = {}
     if popsize:
         inopts["popsize"] = popsize
     if maxevals:
@@ -157,7 +163,7 @@ def lincmaes(
     if seed:
         inopts["seed"] = seed
 
-    x = np.clip(x, def_clamps[0], def_clamps[1])  # TODO - inaczej
+    x = np.clip(x, def_clamps[0], def_clamps[1])
     sigm = abs(def_clamps[0] - def_clamps[1]) / 3
     es = CMAEvolutionStrategy(x, sigma0=sigm, inopts=inopts)
 
@@ -180,9 +186,14 @@ def lincmaes(
                     )
                     continue
 
+
             evals_values.append(es.countevals)
+
             midpoint_values.append(f(es.mean))
+            midpoint_solutions.append(es.mean.copy())
+
             best_values.append(f(es.best.x))
+            best_solutions.append(es.best.x.copy())
 #---------------------------------- match -> if-elif 
         if gradient_type == CMAVariation.PC:
             d = es.pc
@@ -237,6 +248,14 @@ def lincmaes(
             solution = es.mean + solution * d
             es.mean = solution
             es.pc = np.zeros_like(solution)
+            
+            midpoint_values.append(get_function(fun)(es.mean))
+            midpoint_solutions.append(es.mean.copy())
+
+            best_values.append(get_function(fun)(es.best.x))
+            best_solutions.append(es.best.x.copy())
+
+            evals_values.append(es.countevals)
 
         except RuntimeError:
             with open("golden_failed.csv", "a") as f:
@@ -262,6 +281,9 @@ def lincmaes(
         midpoint_values=np.array(midpoint_values),
         best_values=np.array(best_values),
         nums_evals=np.array(evals_values),
+        midpoint_solutions=np.array(midpoint_solutions),
+        best_solutions=np.array(best_solutions),
+
     )
 
     ss_result = None
@@ -308,9 +330,10 @@ def eswrapper(
     midpoint_values = []
     evals_values = []
     best_values = []
+    midpoint_solutions = []
+    best_solutions = []
 
     inopts = DEFAULT_CMA_OPTIONS.copy()
-    inopts["restarts"] = "IPOP"
 
     if popsize:
         inopts["popsize"] = popsize
@@ -321,10 +344,45 @@ def eswrapper(
 
     x = np.clip(x, def_clamps[0], def_clamps[1])  # TODO - inaczej
     sigm = abs(def_clamps[0] - def_clamps[1]) / 3
-    es = CMAEvolutionStrategy(x, sigma0=sigm, inopts=inopts)
 
-    while not es.stop():
+    total_evals = 0
+    ipop = 0
+
+    popsize0 = popsize
+    sigma0 = sigm
+
+    while total_evals < maxevals:
+
+        inopts_ipop = inopts.copy()
+        inopts_ipop["popsize"] = popsize0
+
+        es = CMAEvolutionStrategy(
+            x,
+            sigma0=sigma0,
+            inopts=inopts_ipop
+        )
+
+        while not es.stop() and total_evals < maxevals:
+            f = get_function(fun)
+
+            X = es.ask()
+            X = [np.clip(x, def_clamps[0], def_clamps[1]) for x in X]
+            fit_vals = [f(x) for x in X]
+
+            es.tell(X, fit_vals)
+
+            total_evals = es.countevals
+
+            evals_values.append(total_evals)
+            midpoint_values.append(f(es.mean))
+            best_values.append(f(es.best.x))
+
+        # ===== IPOP restart =====
+        ipop += 1
+        popsize0 *= 2
+        sigma0 *= 2
         f = get_function(fun)
+        
         try:
             X = es.ask()
             X = [np.clip(x, def_clamps[0], def_clamps[1]) for x in X]
@@ -345,6 +403,8 @@ def eswrapper(
         evals_values.append(es.countevals)
         midpoint_values.append(f(es.mean))
         best_values.append(f(es.best.x))
+        midpoint_solutions.append(es.mean.copy())
+        best_solutions.append(es.best.x.copy())
 
     return CMAResult(
         fun=fun,
@@ -354,4 +414,7 @@ def eswrapper(
         midpoint_values=np.array(midpoint_values),
         best_values=np.array(best_values),
         nums_evals=np.array(evals_values),
+        midpoint_solutions=np.array(midpoint_solutions),
+        best_solutions=np.array(best_solutions),
+
     )
