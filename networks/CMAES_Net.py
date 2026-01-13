@@ -17,7 +17,7 @@ from Net import *
 
 class Evaluation_method():
 
-    def __init__(self, seed):
+    def __init__(self, seed, images, labels ):
         self.x_train, self.x_test, self.y_train, self.y_test = train_test_split(images, labels, test_size=0.2, random_state=seed) # TODO = add a  seed that changes every time?
 
         self.x_train = np.array(self.x_train)
@@ -26,8 +26,8 @@ class Evaluation_method():
         self.y_test = np.array(self.y_test)
 
         # Normalize pixel values to be between 0 and 1
-        self.x_train = self.x_train / 255.0
-        self.x_test =  self.x_test / 255.0
+        self.x_train = (self.x_train / 255.0) * 2 - 1
+        self.x_test = (self.x_test / 255.0) * 2 - 1
 
         # Flatten the images
         self.x_train = self.x_train.reshape(self.x_train.shape[0], -1)
@@ -89,12 +89,12 @@ class Evaluation_method():
         train_loss = 0
         correct_predictions = 0
 
-        if self.train_pointer * TEST_BATCH_SIZE > len(self.x_train):
+        if self.train_pointer * BATCH_SIZE > len(self.x_train):
             self.train_pointer = 0
 
-        l = self.train_pointer * TEST_BATCH_SIZE
+        l = self.train_pointer * BATCH_SIZE
 
-        for x, y_true in zip(self.x_train[ l :  l + TEST_BATCH_SIZE], self.y_train[ l : l + TEST_BATCH_SIZE]):
+        for x, y_true in zip(self.x_train[ l :  l + BATCH_SIZE], self.y_train[ l : l + BATCH_SIZE]):
             #x = x.reshape(1, -1)
             y_pred = self.my_network(x)
 
@@ -110,7 +110,7 @@ class Evaluation_method():
         accuracy = correct_predictions / len(self.x_train)
         self.train_pointer += 1
         # Calculate average loss and accuracy
-        return (1-accuracy), TEST_BATCH_SIZE
+        return (1 - accuracy), BATCH_SIZE
     
 
 
@@ -152,7 +152,7 @@ class Evaluation_method():
         accuracy = correct_predictions / len(self.x_test)
         self.train_pointer += 1
         # Calculate average loss and accuracy
-        return (1-accuracy)
+        return accuracy
     
 
 
@@ -161,7 +161,7 @@ class Evaluation_method():
 
 
 
-def run_cmaes_net(func, run_id,  seed=None):
+def run_cmaes_net(run_id, images, labels, seed=None):
 
     seed = seed or int((time.time() * 1000) + run_id)  # Generujemy nasiono na podstawie czasu i run_id
     seed = seed % (2**32)
@@ -170,7 +170,7 @@ def run_cmaes_net(func, run_id,  seed=None):
     x0 = np.random.uniform(CLAMPS[0], CLAMPS[1], size=dimension)
     # switch_interval = 1
     popsize = int(4 + np.floor(3 * np.log(dimension)))
-    eval_meth = Evaluation_method(seed)
+    eval_meth = Evaluation_method(seed, images, labels)
     f_eval = Eval_wrapper(eval_meth.evaluate)
 
 
@@ -178,7 +178,7 @@ def run_cmaes_net(func, run_id,  seed=None):
         x=x0,
         fun=f_eval,
         popsize=popsize,
-        maxevals=MAX_FES,
+        maxevals=MAX_EVALS,
         variation=CMAVariation.VANILLA,
         seed=seed,
         callback=None,
@@ -186,21 +186,22 @@ def run_cmaes_net(func, run_id,  seed=None):
 
     result = []
 
-    max_fes = MAX_FES
+    max_fes = MAX_EVALS
     for checkpoint in globals.def_checkpoints:
         eval_checkpoint = max_fes * checkpoint
 
-        idx = np.abs(data.nums_evals - eval_checkpoint).argmin()
+        idx = np.abs(np.array(data.nums_evals) - eval_checkpoint).argmin()
 
 
         closest_checkpoint = data.nums_evals[idx]
 
         if( abs(data.nums_evals[idx] - eval_checkpoint ) < 50 ):
             # closest_value = abs(float(curr_f["global_min"]) - data.midpoint_values[idx])
-            closest_value = eval_meth.test(data.best_solutions[idx])
             
+            closest_value = eval_meth.test(data.best_solutions[idx])
+
             result.append({
-                "function": func,
+                "algorithm": 'cmaes',
                 "dimension": dimension,
                 "run": run_id,
                 "checkpoint": checkpoint,
@@ -209,12 +210,12 @@ def run_cmaes_net(func, run_id,  seed=None):
         else:
             closest_value = 0
             result.append({
-                "function": func,
+                "algorithm": 'cmaes',
                 "dimension": dimension,
                 "run": run_id,
                 "checkpoint": checkpoint,
                 "error": [closest_value]
             })
 
-
+    print(run_id)
     return result

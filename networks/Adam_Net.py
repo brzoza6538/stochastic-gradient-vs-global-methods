@@ -2,16 +2,16 @@ import numpy as np
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelBinarizer
-
 import time
 
 from Net import *
 
 
-def run_adam_net(func, run_id,  seed=None):
+def run_adam_net(run_id, images, labels,  seed=None):
 
     seed = seed or int((time.time() * 1000) + run_id)  # Generujemy nasiono na podstawie czasu i run_id
     seed = seed % (2**32)
+    print(seed)
     x_train, x_test, y_train, y_test = train_test_split(images, labels, test_size=0.2, random_state=seed)
 
     x_train = np.array(x_train)
@@ -20,8 +20,8 @@ def run_adam_net(func, run_id,  seed=None):
     y_test = np.array(y_test)
 
     # Normalize pixel values to be between 0 and 1
-    x_train = x_train / 255.0
-    x_test =  x_test / 255.0
+    x_train = (x_train / 255.0) * 2 - 1
+    x_test = (x_test / 255.0) * 2 - 1
 
     # Flatten the images
     x_train = x_train.reshape(x_train.shape[0], -1)
@@ -52,11 +52,11 @@ def run_adam_net(func, run_id,  seed=None):
                                 tanh_layer1, fully_connected_layer2,
                                 tanh_layer2, fully_connected_layer3,
                                 tanh_layer3
-                                ], learning_rate=0.01)
+                                ], learning_rate=0.001)
 
     # Compile the network with a loss function
 
-    my_loss = Loss(def_loss,def_derivative_loss)
+    my_loss = Loss(cross_entropy_loss,derivative_cross_entropy)
 
     my_network.compile(loss=my_loss)
 
@@ -69,9 +69,15 @@ def run_adam_net(func, run_id,  seed=None):
 
     for checkpoint in log.keys():
         result.append({
-            "function": func,
+            "algorithm": 'adam',
             "run": run_id,
             "checkpoint": checkpoint,
             "error": log[checkpoint]
             })
+        
+    print(run_id)
     return result
+
+
+
+

@@ -1,12 +1,12 @@
 #!/bin/bash -l
-#SBATCH -J adam_net
+#SBATCH -J net_cmaes
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=26
 #SBATCH --mem=1GB
 #SBATCH --time=24:00:00
 #SBATCH -p plgrid
-#SBATCH --output="networks/adam_output.log"
-#SBATCH --error="networks/adam_error.log"
+#SBATCH --output="networks/cmaes_output.log"
+#SBATCH --error="networks/cmaes_error.log"
 
 
 
@@ -16,4 +16,4 @@ cd $SLURM_SUBMIT_DIR
 source $BASE_DIR/.venv/bin/activate
 export PYTHONPATH=$PYTHONPATH:$BASE_DIR
 cd networks
-python3 script.py
+python3 script2.py

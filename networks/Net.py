@@ -15,17 +15,14 @@ HID_LAYER_2 = 16
 
 OUTPUT = 10
 
-TEST_BATCH_SIZE = 20
+BATCH_SIZE = 20
 
-MAX_FES = 100000
+MAX_EVALS = 100000
 
 CLAMPS = [-1, 1]
 
 
 
-
-mnist = fetch_openml('mnist_784')
-images, labels = mnist.data, mnist.target.astype(int)
 
 
 def def_loss(val_y : np.ndarray, pred_y : np.ndarray) -> np.ndarray:
@@ -33,6 +30,13 @@ def def_loss(val_y : np.ndarray, pred_y : np.ndarray) -> np.ndarray:
 
 def def_derivative_loss(val_y : np.ndarray, pred_y : np.ndarray) -> np.ndarray:
     return((2 * (pred_y - val_y)))
+
+
+def cross_entropy_loss(y_true, y_pred):
+    return -np.sum(y_true * np.log(y_pred + 1e-8), axis=1)
+
+def derivative_cross_entropy(y_true, y_pred):
+    return (y_pred - y_true) / y_true.shape[0]
 
 
 class Layer(ABC):
@@ -53,14 +57,20 @@ class FullyConnected(Layer):
         super().__init__()
         self.input_size = input_size
         self.output_size = output_size
+        self.weights = np.random.uniform(-weight_range, weight_range, (input_size, output_size))
+        self.bias = np.random.uniform(-weight_range, weight_range, (1, output_size))
 
-        self.weights = np.random.rand(input_size, output_size) * weight_range
-        self.bias = np.random.rand(1, output_size) * weight_range
 
         self.weights_derivative = np.zeros((input_size, output_size))
         self.bias_derivative = np.zeros((1, output_size))
 
         self.inputs = None
+
+        self.w_m = np.zeros_like(self.weights)
+        self.w_v = np.zeros_like(self.weights)
+        self.b_m = np.zeros_like(self.bias)
+        self.b_v = np.zeros_like(self.bias)
+        self.t = 0
 
     def forward(self, x: np.ndarray) -> np.ndarray:
         self.inputs = x
@@ -72,7 +82,7 @@ class FullyConnected(Layer):
         self.weights_derivative += np.matmul(self.inputs.T, output_error_derivative)
         input_error_derivative = np.matmul(output_error_derivative, self.weights.T)
 
-        self.bias_derivative += (output_error_derivative)
+        self.bias_derivative += np.sum(output_error_derivative, axis=0, keepdims=True)
         return input_error_derivative
 
 class Tanh(Layer):
@@ -110,6 +120,12 @@ class Network:
         self.seen_checkpoints = set()
         self.checkpoints = globals.def_checkpoints
         self.log = {checkpoint: [] for checkpoint in self.checkpoints}
+        self.epoch = 0 
+
+        self.E=1e-8
+        self.B1=0.9 
+        self.B2=0.999 
+
 
     def compile(self, loss: Loss) -> None:
         self.loss = loss
@@ -121,31 +137,28 @@ class Network:
         return(x)
 
 
-    def calculate_test_loss(self, x_test, y_test):
-        total_loss = 0
-        index = 0
+    def calculate_test_acc(self, x_test, y_test):
+        y_pred = self(x_test)  # forward entire test set at once
+        loss_values = self.loss.calculate_loss(y_test, y_pred)
+        total_loss = np.sum(loss_values)
 
-        for x, y_true in zip(x_test, y_test):
-            index += 1
-            # forward
-            x = x.reshape(1,self.layers[0].input_size)
-            y_pred = self(x)
+        pred = np.argmax(y_pred, axis=1)
+        true = np.argmax(y_test, axis=1)
+        acc = np.mean(pred == true)
 
-            # calculate loss
-            current_loss = self.loss.calculate_loss(y_true, y_pred)
+        return acc
 
-            total_loss += np.sum(current_loss)
-
-        return 1 - (total_loss / len(x_test))
 
     def collect_data(self, x_test, y_test):
-        # print(self.counter, " - ", error)
-        error = self.calculate_test_loss(x_test, y_test)
+        print("cntr - err \t", self.counter, " - ", error)
         for checkpoint in self.checkpoints:
-            checkpoint_fes = int(checkpoint * MAX_FES)
+            checkpoint_fes = int(checkpoint * MAX_EVALS)
             
-            if error < globals.def_smallest_val and self.counter <= checkpoint_fes:
-                self.log[checkpoint].append(0)
+            if self.counter <= checkpoint_fes:
+                error = self.calculate_test_acc(x_test, y_test)
+
+                if error < globals.def_smallest_val :
+                    self.log[checkpoint].append(0)
 
             if checkpoint not in self.seen_checkpoints and self.counter >= checkpoint_fes:
                 self.log[checkpoint].append(0 if error < globals.def_smallest_val else error)
@@ -156,51 +169,83 @@ class Network:
             y_train: np.ndarray,
             x_test: np.ndarray,
             y_test: np.ndarray,
-
             verbose: int = 0,
-            batch_size=1) -> None:
-        if verbose == 2:
-          data = []
-        while True:
-            total_loss = 0
-            index = 0
+            ):
 
-            for x, y_true in zip(x_train, y_train):
-                index += 1
-                # forward
-                x = x.reshape(1,self.layers[0].input_size)
-                y_pred = self(x)
 
-                # calculate loss
-                current_loss = self.loss.calculate_loss(y_true, y_pred)
 
-                total_loss += np.sum(current_loss)
+        num_samples = x_train.shape[0]
+        self.counter = 0
+        self.seen_checkpoints = set()
 
-                # backpropagtion
+        while self.counter < MAX_EVALS:
+            # Shuffle training data each epoch
+            permutation = np.random.permutation(num_samples)
+            x_train_shuffled = x_train[permutation]
+            y_train_shuffled = y_train[permutation]
 
-                loss_derivative = self.loss.loss_derivative(y_true, y_pred)
+            for start_idx in range(0, num_samples, BATCH_SIZE):
+                # print("epoch: ", self.epoch, " \t batch : ", start_idx)
+                end_idx = min(start_idx + BATCH_SIZE, num_samples)
+                x_batch = x_train_shuffled[start_idx:end_idx]
+                y_batch = y_train_shuffled[start_idx:end_idx]
 
+                # --- Forward pass ---
+                y_pred = x_batch
+                for layer in self.layers:
+                    y_pred = layer.forward(y_pred)
+
+                # --- Backward pass ---
+                loss_derivative = self.loss.loss_derivative(y_batch, y_pred)
                 for layer in reversed(self.layers):
                     loss_derivative = layer.backward(loss_derivative)
 
-                # Update weights and biases
-                if(index % batch_size == 0):
-                  for layer in self.layers:
+                # --- Update weights for FullyConnected layers ---
+                for layer in self.layers:
                     if isinstance(layer, FullyConnected):
-                      help = layer.weights
-                      layer.weights -= (self.learning_rate * layer.weights_derivative) / batch_size
-                      layer.bias -= (self.learning_rate * layer.bias_derivative) / batch_size
+                        # TODO - Adam
+                        layer.t += 1
 
-                      layer.weights_derivative = np.zeros((layer.input_size, layer.output_size))
-                      layer.bias_derivative = np.zeros((1, layer.output_size))
-                
-                self.counter += 1
-                
-                self.collect_data(x_test, y_test)
-                
-                if self.counter > MAX_FES:
-                    return 
+                        # Wagi
+                        layer.w_m = self.B1 * layer.w_m + (1 - self.B1) * layer.weights_derivative
+                        layer.w_v = self.B2 * layer.w_v + (1 - self.B2) * (layer.weights_derivative ** 2)
+                        m_hat = layer.w_m / (1 - self.B1 ** layer.t)
+                        v_hat = layer.w_v / (1 - self.B2 ** layer.t)
+                        layer.weights -= self.learning_rate * m_hat / (np.sqrt(v_hat) + self.E)
 
+                        # Biasy
+                        layer.b_m = self.B1 * layer.b_m + (1 - self.B1) * layer.bias_derivative
+                        layer.b_v = self.B2 * layer.b_v + (1 - self.B2) * (layer.bias_derivative ** 2)
+                        m_hat = layer.b_m / (1 - self.B1 ** layer.t)
+                        v_hat = layer.b_v / (1 - self.B2 ** layer.t)
+                        layer.bias -= self.learning_rate * m_hat / (np.sqrt(v_hat) + self.E)
+
+
+                        # Reset derivatives
+                        layer.weights_derivative.fill(0)
+                        layer.bias_derivative.fill(0)
+
+                # --- Update counters ---
+                self.counter += len(x_batch)
+
+                # --- Collect checkpoint data ---
+                for checkpoint in self.checkpoints:
+                    checkpoint_fes = int(checkpoint * MAX_EVALS)
+                    if checkpoint not in self.seen_checkpoints and self.counter >= checkpoint_fes:
+                        print(self.counter)
+                        error = self.calculate_test_acc(x_test, y_test)
+                        print(error)
+                        self.log[checkpoint].append(0 if error < globals.def_smallest_val else error)
+                        self.seen_checkpoints.add(checkpoint)
+
+                # Stop if MAX_EVALS reached
+                if self.counter >= MAX_EVALS:
+                    if verbose:
+                        print(f"Reached MAX_EVALS = {MAX_EVALS}")
+                    return
+            
+            self.epoch += 1
+            print("epoch : ", self.epoch)
 
 
 
@@ -210,8 +255,8 @@ class EmbedLayer(Layer):
         self.input_size = input_size
         self.output_size = output_size
 
-        self.weights = np.random.rand(input_size, output_size) * weight_range
-        self.bias = np.random.rand(1, output_size) * weight_range
+        self.weights = np.random.uniform(-weight_range, weight_range, (input_size, output_size))
+        self.bias = np.random.uniform(-weight_range, weight_range, (1, output_size))
 
         self.inputs = None
 

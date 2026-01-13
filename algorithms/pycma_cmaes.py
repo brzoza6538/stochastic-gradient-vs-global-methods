@@ -375,7 +375,9 @@ def eswrapper(
 
             evals_values.append(total_evals)
             midpoint_values.append(f(es.mean))
+            midpoint_solutions.append(es.mean.copy())
             best_values.append(f(es.best.x))
+            best_solutions.append(es.best.x.copy()) 
 
         # ===== IPOP restart =====
         ipop += 1
