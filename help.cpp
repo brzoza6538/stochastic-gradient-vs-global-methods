@@ -590,41 +590,41 @@ void Optimizer::FindNSaveBest(bool init, int ChosenOne)
         }
 }
 
-// void Optimizer::RemoveTooNear(int popSize, int NewNInds){
-//     int PointsToRemove = popSize - NewNInds;
-//     int curPopSize=popSize;
+void Optimizer::RemoveTooNear(int popSize, int NewNInds){
+    int PointsToRemove = popSize - NewNInds;
+    int curPopSize=popSize;
     
-//     double TOO_SMALL_DIST=1e-7;
+    double TOO_SMALL_DIST=1e-7;
     
 
-//     for(int L=0;L!=PointsToRemove;L++){
-//         double smallestDist=1e20;
-//         int best_i=0;
-//         int best_j=0;
-//         for(int i=0;i<curPopSize-1;++i){
-//             for(int j=i+1;j<curPopSize;++j){
-//                 double dist= getDist(Popul[i], Popul[j], dimensionality);
-//                 if(dist<smallestDist){
-//                     smallestDist=dist;
-//                     best_i=i;
-//                     best_j=j;
-//                 }
+    for(int L=0;L!=PointsToRemove;L++){
+        double smallestDist=1e20;
+        int best_i=0;
+        int best_j=0;
+        for(int i=0;i<curPopSize-1;++i){
+            for(int j=i+1;j<curPopSize;++j){
+                double dist= getDist(Popul[i], Popul[j], dimensionality);
+                if(dist<smallestDist){
+                    smallestDist=dist;
+                    best_i=i;
+                    best_j=j;
+                }
                 
-//             }
-//         }
-//         if(smallestDist<=TOO_SMALL_DIST){
-//             for(int j=0;j!=NVars;++j)
-//                 Popul[best_i][j] = Popul[curPopSize-1][j];
-//             Fitmass[best_i] = Fitmass[curPopSize-1];                
-//             --curPopSize;
-//         }
+            }
+        }
+        if(smallestDist<=TOO_SMALL_DIST){
+            for(int j=0;j!=NVars;++j)
+                Popul[best_i][j] = Popul[curPopSize-1][j];
+            Fitmass[best_i] = Fitmass[curPopSize-1];                
+            --curPopSize;
+        }
 
-//     }
-//     int pointsLeftToRemove = curPopSize - NewNInds;
-//     if(pointsLeftToRemove>0){
-//         RemoveWorst(curPopSize, NewNInds);
-//     }
-// }
+    }
+    int pointsLeftToRemove = curPopSize - NewNInds;
+    if(pointsLeftToRemove>0){
+        RemoveWorst(curPopSize, NewNInds);
+    }
+}
 
 void Optimizer::RemoveWorst(int popSize, int NewNInds)
 {
@@ -841,6 +841,7 @@ void Optimizer::MainCycle(double optFit)
                 usedRepair=true;
                 const int NUM_OF_TR_WITHOUT_F_HANGE=10;
                 do{
+                    // AAAAAAAAAA
                     if(num_of_trials>NUM_OF_TR_WITHOUT_F_HANGE){
                         CrossExponential = 0;
                         if(Random(0,1) < 0.5)
@@ -880,9 +881,11 @@ void Optimizer::MainCycle(double optFit)
                         FGenerated[curIndx]*(GetValue(Rands[1],popSize,j) - GetValue(Rands[2],popSize,j));
                 F = FGenerated[curIndx]; //corrected F
                 int WillCrossover = intRandom(NVars);
+
                 if(num_of_trials<=NUM_OF_TR_WITHOUT_F_HANGE){
                     Cr = CrGenerated[BackIndexes[curIndx]];
                 }
+                // AAAAAAAAAA
                 double CrToUse = 0;
                 if(NFEval > 0.5*(maxFES))
                     CrToUse = (double(NFEval)/double(maxFES)-0.5)*2;
@@ -950,7 +953,7 @@ if(populLimCount[curIndx]>MIN_ITS_ON_BOUND){
                   return;
                 }
             }
-
+#ZAkładka
             if(popFitTmp[curIndx] < Fitmass[curIndx])
                 SaveSuccessCrF(Cr,F,fabs(Fitmass[curIndx]-popFitTmp[curIndx]));
             
@@ -1133,30 +1136,8 @@ if(populLimCount[curIndx]>MIN_ITS_ON_BOUND){
         else
             ArchProbs = 0.5;
         int newNInds;
-        if(isRestart){//HomoAtReset
-            double shapeConst = 0.1;//jak większe to szybszy spadek, mozna tez pokręcić minimalnym rozmiarem pop
-            //double shapeConst = 0.2;//jak większe to szybszy spadek, mozna tez pokręcić minimalnym rozmiarem pop
-            //double shapeConst = 0.05;
-
-            //const int MIN_POP=4;
-
-            const int MIN_POP=20;//best
-
-            //const int MIN_POP=30;
-            //const int MIN_POP=10;
-
-            double divider = (maxFES-evalsAtStart)/shapeConst;
-
-            double delta=pow( (MIN_POP* (maxFES-evalsAtStart)/divider-(maxFES-evalsAtStart)/divider*popSize), 2)-4*(maxFES-evalsAtStart)/divider*(MIN_POP-popSize);
-            if(delta<=0){
-                newNInds=MIN_POP;
-            }else{
-            double b1=(-(MIN_POP*(maxFES-evalsAtStart)/divider-(maxFES-evalsAtStart)/divider*popSize)-sqrt(delta))/(2*(MIN_POP-popSize));
-            double a1=popSize-1/b1;
-            newNInds = round(a1+1/( (NFEval-evalsAtStart) /divider+b1));
-            }
-        }else{
-            newNInds = round((NIndsMin-NIndsMax)*pow((double(NFEval)/double(maxFES)),(1.0-double(NFEval)/double(maxFES)))+NIndsMax);
+{
+        newNInds = round((NIndsMin-NIndsMax)*pow((double(NFEval)/double(maxFES)),(1.0-double(NFEval)/double(maxFES)))+NIndsMax);
         }
 
 

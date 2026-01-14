@@ -17,7 +17,6 @@ from .algorithms.globals import *
 MIN_POP_SIZE = 4
 ARCHIVE_SIZE_PARAM = 2.1
 
-# TODO - dlaczego oznacza F jako constant VScode? - cos zlego to moze zrobic?
 RETRIES = 25
 
 RESAMPLING = True

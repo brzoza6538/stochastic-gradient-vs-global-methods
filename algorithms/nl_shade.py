@@ -1,8 +1,12 @@
+import random
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
+
 from algorithms import *
 
 F_INIT = 0.2
 CR_INIT = 0.2
-
+RETRIES = 25
 RESAMPLING = True
 MAX_NUM_OF_TRIALS = 100
 NUM_OF_TR_WITHOUT_F_HANGE = 10
@@ -16,7 +20,7 @@ MIN_POP_SIZE_4_SPLIT = 4
 MIN_DIST = 1e-5
 MAX_NUM_OF_STAG_IT = 7
 
-class NL_SHADE():
+class NL_SHADE_RSP_MID():
     def __init__(
             self,
             f_objective,
@@ -125,7 +129,7 @@ class NL_SHADE():
 
 
 
-    def collect_data(self): #SaveBestValues
+    def collect_data(self, end=False): #SaveBestValues
         for curr_indx in range(self.pop_size):
             self.check_point(curr_indx)
 
@@ -138,6 +142,11 @@ class NL_SHADE():
             if checkpoint not in self.seen_checkpoints and self.objective_counter >= checkpoint_fes:
                 self.log[checkpoint].append(0 if self.global_best_fit < self.smallest_val else self.global_best_fit)
                 self.seen_checkpoints.add(checkpoint)
+            
+            if checkpoint not in self.seen_checkpoints and end == True:
+                self.log[checkpoint].append(0 if self.global_best_fit < self.smallest_val else self.global_best_fit)
+                self.seen_checkpoints.add(checkpoint)
+
 
 
     def resize_pop(self, new_pop_size):
@@ -249,7 +258,9 @@ class NL_SHADE():
         while(self.objective_counter < self.objective_limit) and (self.global_best_fit is None or self.global_best_fit > self.smallest_val) and not end:
             loop += 1
             end = self.step()
-            self.collect_data()
+            self.collect_data(end)
+        self.collect_data(end)
+
 
 
     def step(self):
@@ -505,10 +516,10 @@ class NL_SHADE():
             # switch closest point to it, into mean
             # TODO - why in resampling?
 
-            # chosen_indx = np.argmin(np.linalg.norm(self.temp_pop - self.mean_indiv, axis=1))
-            # if fit_mean < self.pop_fit_tmp[chosen_indx]:
-            #     self.pop_fit_tmp[chosen_indx] = fit_mean
-            #     self.temp_pop[chosen_indx] = self.mean_indiv.copy()
+            chosen_indx = np.argmin(np.linalg.norm(pop_tmp - self.mean_indiv, axis=1))
+            if fit_mean < fit_tmp[chosen_indx]:
+                fit_tmp[chosen_indx] = fit_mean
+                pop_tmp[chosen_indx] = self.mean_indiv.copy()
 
 
             self.mean_indiv = np.mean(pop_tmp, axis=0)
@@ -517,7 +528,7 @@ class NL_SHADE():
             if dist < MIN_DIST:
                 self.num_of_stag_it += 1
                 if self.num_of_stag_it > MAX_NUM_OF_STAG_IT:
-                    print("\nSTAGNANT\n")
+                    print("\nSTAGNANT")
                     return True
             else:
                 self.num_of_stag_it = 0
@@ -541,15 +552,23 @@ class NL_SHADE():
                 self.pop[curr_indx] = pop_tmp[curr_indx]
                 self.fitmass[curr_indx] = fit_tmp[curr_indx]
         
-        if(arch_use_cntr != 0):
+        if arch_use_cntr > 0:
             arch_succ = arch_succ / arch_use_cntr
-            no_arch_succ = no_arch_succ / (self.pop_size - arch_use_cntr)
-            
-            self.arch_use_prob = max(0.1, min(0.9, self.arch_use_prob))
-            if(arch_succ == 0):
-                self.arch_use_prob = 0.5
         else:
+            arch_succ = 0
+
+        no_arch_count = self.pop_size - arch_use_cntr
+        if no_arch_count > 0:
+            no_arch_succ = no_arch_succ / no_arch_count
+        else:
+            no_arch_succ = 0
+
+        # Update archive usage probability
+        if arch_succ == 0:
             self.arch_use_prob = 0.5
+        else:
+            self.arch_use_prob = max(0.1, min(0.9, self.arch_use_prob))
+
 
 
         new_pop_size = round((self.min_pop_size-self.max_pop_size)*pow((self.objective_counter/self.objective_limit),(1.0-self.objective_counter/self.objective_limit))+self.max_pop_size)

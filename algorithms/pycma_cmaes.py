@@ -379,10 +379,9 @@ def eswrapper(
             best_values.append(f(es.best.x))
             best_solutions.append(es.best.x.copy()) 
 
-        # ===== IPOP restart =====
         ipop += 1
         popsize0 *= 2
-        sigma0 *= 2
+        # sigma0 *= 2
         f = get_function(fun)
         
         try:
