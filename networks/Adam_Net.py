@@ -56,7 +56,7 @@ def run_adam_net(run_id, images, labels,  seed=None):
 
     # Compile the network with a loss function
 
-    my_loss = Loss(cross_entropy_loss,derivative_cross_entropy)
+    my_loss = Loss(def_loss,def_derivative_loss)
 
     my_network.compile(loss=my_loss)
 

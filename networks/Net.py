@@ -32,11 +32,11 @@ def def_derivative_loss(val_y : np.ndarray, pred_y : np.ndarray) -> np.ndarray:
     return((2 * (pred_y - val_y)))
 
 
-def cross_entropy_loss(y_true, y_pred):
-    return -np.sum(y_true * np.log(y_pred + 1e-8), axis=1)
+# def cross_entropy_loss(y_true, y_pred):
+#     return -np.sum(y_true * np.log(y_pred + 1e-8), axis=1)
 
-def derivative_cross_entropy(y_true, y_pred):
-    return (y_pred - y_true) / y_true.shape[0]
+# def derivative_cross_entropy(y_true, y_pred):
+#     return (y_pred - y_true) / y_true.shape[0]
 
 
 class Layer(ABC):
@@ -139,8 +139,6 @@ class Network:
 
     def calculate_test_acc(self, x_test, y_test):
         y_pred = self(x_test)  # forward entire test set at once
-        loss_values = self.loss.calculate_loss(y_test, y_pred)
-        total_loss = np.sum(loss_values)
 
         pred = np.argmax(y_pred, axis=1)
         true = np.argmax(y_test, axis=1)

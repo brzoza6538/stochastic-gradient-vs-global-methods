@@ -64,7 +64,7 @@ def run_cmaes(dimension, curr_f, run_id,  seed=None):
 
     return result
 
-globals.gather_data(partial(run_cmaes), "ipop_2")
+globals.gather_data(partial(run_cmaes), "nopop")
 
 
 # dimension = 50
