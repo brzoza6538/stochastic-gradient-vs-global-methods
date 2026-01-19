@@ -1,9 +1,10 @@
 #!/bin/bash
 
-sbatch ./CMAES/run.sh
 sbatch ./Adam/run.sh
 sbatch ./Adagrad/run.sh
 sbatch ./BFGS/run.sh
+sbatch ./cmaes/run.sh
+sbatch ./nl_shade/run.sh
 
 # squeue -u $USER
 # scancel 
