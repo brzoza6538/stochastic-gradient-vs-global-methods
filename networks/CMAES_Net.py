@@ -100,7 +100,7 @@ class Evaluation_method():
 
             # Calculate loss (you might want to use the proper loss function here)
             current_loss = self.my_loss.calculate_loss(y_true, y_pred)
-            train_loss += current_loss
+            train_loss += np.mean(current_loss)
 
             # Check if the prediction is correct
             predicted_label = np.argmax(y_pred)
@@ -110,8 +110,8 @@ class Evaluation_method():
         accuracy = correct_predictions / len(self.x_train)
         self.train_pointer += 1
         # Calculate average loss and accuracy
-        return (1 - accuracy), BATCH_SIZE
-    
+        # return (1 - accuracy), BATCH_SIZE
+        return train_loss/BATCH_SIZE, BATCH_SIZE
 
 
     def test(self, x):
@@ -219,3 +219,4 @@ def run_cmaes_net(run_id, images, labels, seed=None):
 
     print(run_id)
     return result
+
