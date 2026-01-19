@@ -4,6 +4,9 @@ from sklearn.metrics import silhouette_score
 
 from algorithms import *
 
+from sklearn.exceptions import ConvergenceWarning
+import warnings
+
 F_INIT = 0.2
 CR_INIT = 0.2
 RETRIES = 25
@@ -129,24 +132,31 @@ class NL_SHADE_RSP_MID():
 
 
 
-    def collect_data(self, end=False): #SaveBestValues
-        for curr_indx in range(self.pop_size):
-            self.check_point(curr_indx)
+
+    def collect_data(self, end=False): # TODO error dodawany jako lista
 
         for checkpoint in self.checkpoints:
             checkpoint_fes = int(checkpoint * self.objective_limit)
-
             if self.global_best_fit < self.smallest_val and self.objective_counter <= checkpoint_fes:
-                self.log[checkpoint].append(0)
+                # print("--------------------")
+                # print(f"chkpnt{checkpoint}  Cr : ", self.Cr_memory)
+                # print("--------------------")
+                # print(f"chkpnt{checkpoint}  F : ", self.F_memory)
+                # print("--------------------")
+                print(f"chpt {checkpoint} cntr: ", self.objective_counter)
 
+                self.log[checkpoint].append(0)
             if checkpoint not in self.seen_checkpoints and self.objective_counter >= checkpoint_fes:
-                self.log[checkpoint].append(0 if self.global_best_fit < self.smallest_val else self.global_best_fit)
+                # print("--------------------")
+                # print(f"chkpnt{checkpoint}  Cr : ", self.Cr_memory)
+                # print("--------------------")
+                # print(f"chkpnt{checkpoint}  F : ", self.F_memory)
+                # print("--------------------")
+                print(f"chpt {checkpoint} cntr: ", self.objective_counter)
+
+                self.log[checkpoint].append(float(0 if self.global_best_fit < self.smallest_val else self.global_best_fit))
                 self.seen_checkpoints.add(checkpoint)
             
-            if checkpoint not in self.seen_checkpoints and end == True:
-                self.log[checkpoint].append(0 if self.global_best_fit < self.smallest_val else self.global_best_fit)
-                self.seen_checkpoints.add(checkpoint)
-
 
 
     def resize_pop(self, new_pop_size):
@@ -258,10 +268,14 @@ class NL_SHADE_RSP_MID():
         while(self.objective_counter < self.objective_limit) and (self.global_best_fit is None or self.global_best_fit > self.smallest_val) and not end:
             loop += 1
             end = self.step()
-            self.collect_data(end)
-        self.collect_data(end)
+            self.collect_data()
 
-
+            # if loop % 20 == 0:
+            #     print("--------------------")
+            #     print(f"loop {loop}  Cr : ", self.Cr_memory)
+            #     print("--------------------")
+            #     print(f"loop {loop}  F : ", self.F_memory)
+            #     print("--------------------")
 
     def step(self):
 
@@ -316,7 +330,7 @@ class NL_SHADE_RSP_MID():
             F = F_generated[curr_indx]
             dim_to_crossover = random.randrange(self.dimension)
             Cr = Cr_generated[self.backindexes[curr_indx]]
-
+            # HERE
             Cr_to_use = 0
             if self.objective_counter > (0.5 * self.objective_limit):
                 Cr_to_use = (self.objective_counter/self.objective_limit - 0.5) * 2
@@ -428,8 +442,8 @@ class NL_SHADE_RSP_MID():
                     else:
                         self.pop_lim_count[curr_indx] = 0
                     
-                    if self.pop_lim_count[curr_indx] > MIN_ITS_ON_BOUND:
-                        return
+                    # if self.pop_lim_count[curr_indx] > MIN_ITS_ON_BOUND:
+                    #     return
 
 
 
@@ -455,20 +469,26 @@ class NL_SHADE_RSP_MID():
 
 
         if K_MEANS_AS_NEAREST:  
-            
             min_sil_score = 1/(4*math.sqrt(self.dimension))
-
             best_silhouette = None 
             best_k = None
             best_assignments = None
             best_centroids = None
-
+            bestCandFit = None
+            
             data = copy.deepcopy(pop_tmp)
+
             for cand_k in range(2, MAX_K + 1):
                 kmeans = KMeans(n_clusters=cand_k, n_init=10)
-
-                assignments = kmeans.fit_predict(data)
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore", category=ConvergenceWarning)
+                    assignments = kmeans.fit_predict(data)
                 centroids = kmeans.cluster_centers_
+
+                # Sprawdzenie liczby unikalnych klastrów
+                if len(np.unique(assignments)) < 2:
+                    # nie da się policzyć silhouette, pomijamy
+                    continue
 
                 silhouette = silhouette_score(data, assignments, metric='euclidean')
 
@@ -477,63 +497,34 @@ class NL_SHADE_RSP_MID():
                     best_k = cand_k
                     best_assignments = assignments
                     best_centroids = centroids
-            
 
-            bestCandFit = None
-            
-            if best_silhouette > min_sil_score and self.pop_size >= MIN_POP_SIZE_4_SPLIT:
+            # Dalej: jeśli best_silhouette jest None (żadne sensowne klastry nie powstały)
+            if best_silhouette is not None and best_silhouette > min_sil_score and self.pop_size >= MIN_POP_SIZE_4_SPLIT:
+                # reszta Twojej logiki
                 for k in range(best_k):
-                    for i in range(self.dimension):
-                        self.mean_indiv = best_centroids[k]
-                        for j in range(self.dimension):
-                            if self.min_clamp > self.mean_indiv[j] or self.max_clamp < self.mean_indiv[j]:
-                                self.mean_indiv[j] = random.randrange(self.min_clamp, self.max_clamp)
-
+                    self.mean_indiv = best_centroids[k].copy()
+                    for j in range(self.dimension):
+                        if self.min_clamp > self.mean_indiv[j] or self.max_clamp < self.mean_indiv[j]:
+                            self.mean_indiv[j] = random.uniform(self.min_clamp, self.max_clamp)
                     fit_mean, evals_used = self.f_objective(self.mean_indiv)
                     self.objective_counter += evals_used
-                    
                     if bestCandFit is None or fit_mean < bestCandFit:
                         bestCandFit = fit_mean
-                    
-
                     if self.global_best_fit is None or fit_mean < self.global_best_fit:
                         self.global_best_fit = fit_mean
                         self.final_best_sol = copy.deepcopy(self.mean_indiv)
-                    
             else:
-                #if kmean works too bad
+                # fallback: średnia populacji
                 self.mean_indiv = np.mean(pop_tmp, axis=0)
-                if self.min_clamp > self.mean_indiv[j] or self.max_clamp < self.mean_indiv[j]:
-                    self.mean_indiv[j] = random.randrange(self.min_clamp, self.max_clamp)
-                
+                for j in range(self.dimension):
+                    if self.min_clamp > self.mean_indiv[j] or self.max_clamp < self.mean_indiv[j]:
+                        self.mean_indiv[j] = random.uniform(self.min_clamp, self.max_clamp)
                 fit_mean, evals_used = self.f_objective(self.mean_indiv)
                 self.objective_counter += evals_used
-
                 if self.global_best_fit is None or fit_mean < self.global_best_fit:
                     self.global_best_fit = fit_mean
                     self.final_best_sol = copy.deepcopy(self.mean_indiv)
 
-            # switch closest point to it, into mean
-            # TODO - why in resampling?
-
-            chosen_indx = np.argmin(np.linalg.norm(pop_tmp - self.mean_indiv, axis=1))
-            if fit_mean < fit_tmp[chosen_indx]:
-                fit_tmp[chosen_indx] = fit_mean
-                pop_tmp[chosen_indx] = self.mean_indiv.copy()
-
-
-            self.mean_indiv = np.mean(pop_tmp, axis=0)
-            dist = np.linalg.norm(self.mean_indiv_old - self.mean_indiv)
-
-            if dist < MIN_DIST:
-                self.num_of_stag_it += 1
-                if self.num_of_stag_it > MAX_NUM_OF_STAG_IT:
-                    print("\nSTAGNANT")
-                    return True
-            else:
-                self.num_of_stag_it = 0
-
-            self.mean_indiv_old = self.mean_indiv
 ##################### ^ K_MEANS_AS_NEAREST  end
         
         arch_succ = 0
