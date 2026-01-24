@@ -135,6 +135,12 @@ class NL_SHADE_RSP_MID():
 
     def collect_data(self, end=False): # TODO error dodawany jako lista
 
+        if end:
+            for checkpoint in self.checkpoints:
+                if checkpoint not in self.seen_checkpoints:
+                    self.log[checkpoint].append(float(0 if self.global_best_fit < self.smallest_val else self.global_best_fit))
+                    self.seen_checkpoints.add(checkpoint)
+
         for checkpoint in self.checkpoints:
             checkpoint_fes = int(checkpoint * self.objective_limit)
             if self.global_best_fit < self.smallest_val and self.objective_counter <= checkpoint_fes:
@@ -156,6 +162,7 @@ class NL_SHADE_RSP_MID():
 
                 self.log[checkpoint].append(float(0 if self.global_best_fit < self.smallest_val else self.global_best_fit))
                 self.seen_checkpoints.add(checkpoint)
+        
             
 
 
@@ -442,8 +449,10 @@ class NL_SHADE_RSP_MID():
                     else:
                         self.pop_lim_count[curr_indx] = 0
                     
-                    # if self.pop_lim_count[curr_indx] > MIN_ITS_ON_BOUND:
-                    #     return
+                    # HERE
+                    if self.pop_lim_count[curr_indx] > MIN_ITS_ON_BOUND:
+                        self.collect_data(end=True)
+                        return
 
 
 
@@ -467,9 +476,10 @@ class NL_SHADE_RSP_MID():
 
 ##################### K_MEANS_AS_NEAREST 
 
-
         if K_MEANS_AS_NEAREST:  
+            
             min_sil_score = 1/(4*math.sqrt(self.dimension))
+
             best_silhouette = None 
             best_k = None
             best_assignments = None
@@ -477,7 +487,6 @@ class NL_SHADE_RSP_MID():
             bestCandFit = None
             
             data = copy.deepcopy(pop_tmp)
-
             for cand_k in range(2, MAX_K + 1):
                 kmeans = KMeans(n_clusters=cand_k, n_init=10)
                 with warnings.catch_warnings():
@@ -500,7 +509,6 @@ class NL_SHADE_RSP_MID():
 
             # Dalej: jeśli best_silhouette jest None (żadne sensowne klastry nie powstały)
             if best_silhouette is not None and best_silhouette > min_sil_score and self.pop_size >= MIN_POP_SIZE_4_SPLIT:
-                # reszta Twojej logiki
                 for k in range(best_k):
                     self.mean_indiv = best_centroids[k].copy()
                     for j in range(self.dimension):
@@ -524,6 +532,26 @@ class NL_SHADE_RSP_MID():
                 if self.global_best_fit is None or fit_mean < self.global_best_fit:
                     self.global_best_fit = fit_mean
                     self.final_best_sol = copy.deepcopy(self.mean_indiv)
+
+            chosen_indx = np.argmin(np.linalg.norm(pop_tmp - self.mean_indiv, axis=1))
+            if fit_mean < fit_tmp[chosen_indx]:
+                fit_tmp[chosen_indx] = fit_mean
+                pop_tmp[chosen_indx] = self.mean_indiv.copy()
+
+
+            self.mean_indiv = np.mean(pop_tmp, axis=0)
+            dist = np.linalg.norm(self.mean_indiv_old - self.mean_indiv)
+
+            if dist < MIN_DIST:
+                self.num_of_stag_it += 1
+                if self.num_of_stag_it > MAX_NUM_OF_STAG_IT:
+                    print("\nSTAGNANT")
+                    self.collect_data(end=True)
+                    return True
+            else:
+                self.num_of_stag_it = 0
+
+            self.mean_indiv_old = self.mean_indiv
 
 ##################### ^ K_MEANS_AS_NEAREST  end
         
