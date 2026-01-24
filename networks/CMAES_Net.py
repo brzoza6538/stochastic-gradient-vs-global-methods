@@ -56,7 +56,7 @@ class Evaluation_method():
                                     self.fully_connected_layer1,
                                     self.tanh_layer1, self.fully_connected_layer2,
                                     self.tanh_layer2, self.fully_connected_layer3,
-                                    self.tanh_layer3
+                                    # self.tanh_layer3
                                     ], learning_rate=0.01)
 
         # Compile the network with a loss function
@@ -89,14 +89,16 @@ class Evaluation_method():
         train_loss = 0
         correct_predictions = 0
 
-        if self.train_pointer * BATCH_SIZE > len(self.x_train):
+        if int(self.train_pointer) * BATCH_SIZE > len(self.x_train):
             self.train_pointer = 0
 
-        l = self.train_pointer * BATCH_SIZE
+        l = int(self.train_pointer) * BATCH_SIZE
 
-        for x, y_true in zip(self.x_train[ l :  l + BATCH_SIZE], self.y_train[ l : l + BATCH_SIZE]):
+
+
+        for x_i, y_true in zip(self.x_train[ l :  l + BATCH_SIZE], self.y_train[ l : l + BATCH_SIZE]):
             #x = x.reshape(1, -1)
-            y_pred = self.my_network(x)
+            y_pred = self.my_network(x_i)
 
             # Calculate loss (you might want to use the proper loss function here)
             current_loss = self.my_loss.calculate_loss(y_true, y_pred)
@@ -107,11 +109,14 @@ class Evaluation_method():
             true_label = np.argmax(y_true)
             correct_predictions += (predicted_label == true_label)
         
-        accuracy = correct_predictions / len(self.x_train)
-        self.train_pointer += 1
+        accuracy = correct_predictions / BATCH_SIZE
+        self.train_pointer += 0.0001 # HERE
+
+        print("anti acccc: ", (1 - accuracy), "lossss: ", (train_loss/BATCH_SIZE))
+
         # Calculate average loss and accuracy
         # return (1 - accuracy), BATCH_SIZE
-        return train_loss/BATCH_SIZE, BATCH_SIZE
+        return (train_loss/BATCH_SIZE), BATCH_SIZE
 
 
     def test(self, x):
@@ -136,9 +141,9 @@ class Evaluation_method():
         test_loss = 0
         correct_predictions = 0
 
-        for x, y_true in zip(self.x_test, self.y_test):
+        for x_i, y_true in zip(self.x_test, self.y_test):
             #x = x.reshape(1, -1)
-            y_pred = self.my_network(x)
+            y_pred = self.my_network(x_i)
 
             # Calculate loss (you might want to use the proper loss function here)
             current_loss = self.my_loss.calculate_loss(y_true, y_pred)
@@ -150,7 +155,6 @@ class Evaluation_method():
             correct_predictions += (predicted_label == true_label)
         
         accuracy = correct_predictions / len(self.x_test)
-        self.train_pointer += 1
         # Calculate average loss and accuracy
         return accuracy
     
@@ -197,7 +201,7 @@ def run_cmaes_net(run_id, images, labels, seed=None):
 
         if( abs(data.nums_evals[idx] - eval_checkpoint ) < 50 ):
             # closest_value = abs(float(curr_f["global_min"]) - data.midpoint_values[idx])
-            
+            print("CHECKPOINT : ", checkpoint)
             closest_value = eval_meth.test(data.best_solutions[idx])
 
             result.append({
