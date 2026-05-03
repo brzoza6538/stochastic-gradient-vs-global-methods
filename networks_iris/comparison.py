@@ -1,9 +1,12 @@
 from algorithms import *
-from CMAES_Net import *
 from Adam_Net import *
 from functools import partial
+from CMAES_Net import * 
+from NL_SHADE_Net import * 
+from Adagrad_Net import *
+from BFGS_Net import *
 
-RUNS = 10
+RUNS = 1
 
 def gather_data(algorithm, algo_name):
     records = []

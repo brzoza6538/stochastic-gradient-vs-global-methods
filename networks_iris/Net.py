@@ -2,20 +2,21 @@ import numpy as np
 from keras.datasets import mnist
 
 from abc import ABC, abstractmethod
-from sklearn.datasets import fetch_openml
 
 from typing import List
 from algorithms import globals
 
-FULL_MNIST = 784
+# FULL_MNIST = 784
+FULL_IRIS = 4
 
-INPUT = 200
-HID_LAYER_1 = 16
-HID_LAYER_2 = 16
+# INPUT = 200
+HID_LAYER_1 = 3
+HID_LAYER_2 = 3
 
-OUTPUT = 10
+# OUTPUT = 10
+IRIS_OUTPUT = 3
 
-BATCH_SIZE = 1000
+BATCH_SIZE = 150
 
 MAX_EVALS = 100000
 
@@ -147,20 +148,20 @@ class Network:
         return acc
 
 
-    def collect_data(self, x_test, y_test):
-        print("cntr - err \t", self.counter, " - ", error)
-        for checkpoint in self.checkpoints:
-            checkpoint_fes = int(checkpoint * MAX_EVALS)
+    # def collect_data(self, x_test, y_test):
+    #     print("cntr - err \t", self.counter, " - ", error)
+    #     for checkpoint in self.checkpoints:
+    #         checkpoint_fes = int(checkpoint * MAX_EVALS)
             
-            if self.counter <= checkpoint_fes:
-                error = self.calculate_test_acc(x_test, y_test)
+    #         if self.counter <= checkpoint_fes:
+    #             error = self.calculate_test_acc(x_test, y_test)
 
-                if error < globals.def_smallest_val :
-                    self.log[checkpoint].append(0)
+    #             if error < globals.def_smallest_val :
+    #                 self.log[checkpoint].append(0)
 
-            if checkpoint not in self.seen_checkpoints and self.counter >= checkpoint_fes:
-                self.log[checkpoint].append(0 if error < globals.def_smallest_val else error)
-                self.seen_checkpoints.add(checkpoint)
+    #         if checkpoint not in self.seen_checkpoints and self.counter >= checkpoint_fes:
+    #             self.log[checkpoint].append(0 if error < globals.def_smallest_val else error)
+    #             self.seen_checkpoints.add(checkpoint)
 
     def fit(self,
             x_train: np.ndarray,
@@ -267,46 +268,3 @@ class EmbedLayer(Layer):
     def backward(self, error):
         return None
     
-
-
-
-
-
-######### struct 
-
-
-
-
-
-
-# run_adam_net(0)
-# # 10000
-# # {0.01: [0.9983523725250187], 0.1: [0.9837359272621663], 0.2: [0.9675134280735028], 0.3: [0.9512861136771121], 0.4: [0.9350183709614902], 0.5: [0.9188025227730621], 0.6: [0.9025928801237727], 0.7: [0.886384038928273], 0.8: [0.8702088255351574], 0.9: [0.8539829180930221], 1.0: [0.8377531784969092]}
-
-# print("\n\n\n\n")
-# print(run_cmaes_net(0))
-
-# # [{'algorithm': 'cmaes', 'dimension': 2058, 'run': 0, 'checkpoint': 0.01, 'error': [1.0]}, {'algorithm': 'cmaes', 'dimension': 2058, 'run': 0, 'checkpoint': 0.1, 'error': [0.9999821428571428]}, {'algorithm': 'cmaes', 'dimension': 2058, 'run': 0, 'checkpoint': 0.2, 'error': [0.9999821428571428]}, {'algorithm': 'cmaes', 'dimension': 2058, 'run': 0, 'checkpoint': 0.3, 'error': [0.9999464285714286]}, {'algorithm': 'cmaes', 'dimension': 2058, 'run': 0, 'checkpoint': 0.4, 'error': [0.9999107142857143]}, {'algorithm': 'cmaes', 'dimension': 2058, 'run': 0, 'checkpoint': 0.5, 'error': [0.9999464285714286]}, {'algorithm': 'cmaes', 'dimension': 2058, 'run': 0, 'checkpoint': 0.6, 'error': [1.0]}, {'algorithm': 'cmaes', 'dimension': 2058, 'run': 0, 'checkpoint': 0.7, 'error': [1.0]}, {'algorithm': 'cmaes', 'dimension': 2058, 'run': 0, 'checkpoint': 0.8, 'error': [0.9999285714285714]}, {'algorithm': 'cmaes', 'dimension': 2058, 'run': 0, 'checkpoint': 0.9, 'error': [1.0]}, {'algorithm': 'cmaes', 'dimension': 2058, 'run': 0, 'checkpoint': 1.0, 'error': [0.9999107142857143]}]
-
-
-
-
-# #max_fes = 100 000, EMbed = 200
-# # BASE_DIR = /home/plgrid/plgmichalbrz/take_1
-# # {0.01: [0.9837694452997668], 0.1: [0.8430897365359662], 0.2: [0.6881367938641573], 0.3: [0.5335324389233904], 0.4: [0.37913757664223924], 0.5: [0.2250146782355863], 0.6: [0.9388425787227356], 0.7: [0.7864428668970406], 0.8: [0.6361378229518942], 0.9: [0.4883805239623461], 1.0: [0.3422016210182779]}
-# # (14_w,28)-aCMA-ES (mu_w=8.1,w_1=21%) in dimension 3658 (seed=2125303054, Fri Jan  2 13:27:42 2026)
-# # [{'algorithm': 'cmaes', 'dimension': 3658, 'run': 0, 'checkpoint': 0.01, 'error': [0.9999821428571428]}, {'algorithm': 'cmaes', 'dimension': 3658, 'run': 0, 'checkpoint': 0.1, 'error': [0.9999821428571428]}, {'algorithm': 'cmaes', 'dimension': 3658, 'run': 0, 'checkpoint': 0.2, 'error': [0.9999107142857143]}, {'algorithm': 'cmaes', 'dimension': 3658, 'run': 0, 'checkpoint': 0.3, 'error': [0.999875]}, {'algorithm': 'cmaes', 'dimension': 3658, 'run': 0, 'checkpoint': 0.4, 'error': [0.9998928571428571]}, {'algorithm': 'cmaes', 'dimension': 3658, 'run': 0, 'checkpoint': 0.5, 'error': [0.9999642857142857]}, {'algorithm': 'cmaes', 'dimension': 3658, 'run': 0, 'checkpoint': 0.6, 'error': [0.9998928571428571]}, {'algorithm': 'cmaes', 'dimension': 3658, 'run': 0, 'checkpoint': 0.7, 'error': [0.9998928571428571]}, {'algorithm': 'cmaes', 'dimension': 3658, 'run': 0, 'checkpoint': 0.8, 'error': [0.9999107142857143]}, {'algorithm': 'cmaes', 'dimension': 3658, 'run': 0, 'checkpoint': 0.9, 'error': [0.9999642857142857]}, {'algorithm': 'cmaes', 'dimension': 3658, 'run': 0, 'checkpoint': 1.0, 'error': [0.9999285714285714]}]
-
-
-# Checkpoint	train_acc_adam  train_acc_cmaes
-# 0.01	    0.98377         0.99998214
-# 0.10	    0.84309         0.99998214
-# 0.20	    0.68814         0.99991071
-# 0.30	    0.53353         0.99987500
-# 0.40	    0.37914         0.99989286
-# 0.50	    0.22501         0.99996429
-# 0.60	    0.93884         0.99989286
-# 0.70	    0.78644         0.99989286
-# 0.80	    0.63614         0.99991071
-# 0.90	    0.48838         0.99996429
-# 1.00	    0.34220         0.99992857

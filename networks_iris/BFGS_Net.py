@@ -1,6 +1,3 @@
-import numpy as np
-
-import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelBinarizer
 
@@ -9,9 +6,12 @@ from algorithms import globals
 from algorithms import CMAVariation, eswrapper, Eval_wrapper 
 
 import time
-import numpy as np
 
 from Net import *
+from sklearn.preprocessing import MinMaxScaler
+from algorithms.BFGS import BFGS
+
+
 
 
 
@@ -25,10 +25,12 @@ class Evaluation_method():
         self.y_train = np.array(self.y_train)
         self.y_test = np.array(self.y_test)
 
-        # Normalize pixel values to be between 0 and 1
-        self.x_train = (self.x_train / 255.0) * 2 - 1
-        self.x_test = (self.x_test / 255.0) * 2 - 1
+        # Normalize pixel values to be between -1 and 1
 
+        scaler = MinMaxScaler(feature_range=(-1, 1))
+
+        self.x_train = scaler.fit_transform(self.x_train)
+        self.x_test = scaler.transform(self.x_test)
         # Flatten the images
         self.x_train = self.x_train.reshape(self.x_train.shape[0], -1)
         self.x_test = self.x_test.reshape(self.x_test.shape[0], -1)
@@ -40,19 +42,17 @@ class Evaluation_method():
         self.y_test = self.lb.transform(self.y_test)
 
 
-        # Enmbedder
-        self.E_fully_connected_layer = EmbedLayer(input_size=FULL_MNIST, output_size=INPUT)
-        self.tanh_layer0 = Tanh()
+
 
         # Instantiate layers
-        self.fully_connected_layer1 = FullyConnected(input_size=INPUT, output_size=HID_LAYER_1)
+        self.fully_connected_layer1 = FullyConnected(input_size=FULL_IRIS, output_size=HID_LAYER_1)
         self.tanh_layer1 = Tanh()
         self.fully_connected_layer2 = FullyConnected(input_size=HID_LAYER_1, output_size=HID_LAYER_2)
         self.tanh_layer2 = Tanh()
-        self.fully_connected_layer3 = FullyConnected(input_size=HID_LAYER_2, output_size=OUTPUT)
+        self.fully_connected_layer3 = FullyConnected(input_size=HID_LAYER_2, output_size=IRIS_OUTPUT)
         self.tanh_layer3 = Tanh()
 
-        self.my_network = Network(layers=[self.E_fully_connected_layer, self.tanh_layer0,
+        self.my_network = Network(layers=[
                                     self.fully_connected_layer1,
                                     self.tanh_layer1, self.fully_connected_layer2,
                                     self.tanh_layer2, self.fully_connected_layer3,
@@ -112,7 +112,7 @@ class Evaluation_method():
         accuracy = correct_predictions / BATCH_SIZE
         # self.train_pointer += 0.0001 # HERE
 
-        print("anti acccc: ", (1 - accuracy), "lossss: ", (train_loss/BATCH_SIZE))
+        print("acccc: ", (accuracy), "lossss: ", (train_loss/BATCH_SIZE))
 
         # Calculate average loss and accuracy
         # return (1 - accuracy), BATCH_SIZE
@@ -160,67 +160,102 @@ class Evaluation_method():
     
 
 
-##############
+
+# ---------- Finite difference gradient ----------
+def finite_diff_grad(f, x, eps=1e-5):
+    grad = np.zeros_like(x)
+    fx = f(x)
+
+    for i in range(len(x)):
+        x_eps = x.copy()
+        x_eps[i] += eps
+        grad[i] = (f(x_eps) - fx) / eps
+
+    return grad
 
 
+# ---------- Wrapper objective ----------
+class BFGSObjectiveWrapper:
+    def __init__(self, eval_meth):
+        self.eval_meth = eval_meth
+
+    def f_objective(self, x):
+        loss, evals = self.eval_meth.evaluate(x)
+        return loss, evals
+
+    def f_gradient(self, x):
+        grad = finite_diff_grad(lambda v: self.eval_meth.evaluate(v)[0], x)
+        return grad, len(x) * 2  # rough eval count
 
 
-def run_cmaes_net(run_id, images, labels, seed=None):
+# ---------- Main runner ----------
+def run_bfgs_net(run_id, images, labels, seed=None):
 
-    seed = seed or int((time.time() * 1000) + run_id)  # Generujemy nasiono na podstawie czasu i run_id
+    seed = seed or int((time.time() * 1000) + run_id)
     seed = seed % (2**32)
 
-    dimension = ((INPUT + 1)*HID_LAYER_1 + (HID_LAYER_1 + 1)*HID_LAYER_2 + (HID_LAYER_2 + 1)*OUTPUT)
-    x0 = np.random.uniform(CLAMPS[0], CLAMPS[1], size=dimension)
-    # switch_interval = 1
-    popsize = int(4 + np.floor(3 * np.log(dimension)))
-    eval_meth = Evaluation_method(seed, images, labels)
-    f_eval = Eval_wrapper(eval_meth.evaluate)
-
-
-    data = eswrapper(
-        x=x0,
-        fun=f_eval,
-        popsize=popsize,
-        maxevals=MAX_EVALS,
-        variation=CMAVariation.VANILLA,
-        seed=seed,
-        callback=None,
+    # ---------- Data ----------
+    x_train, x_test, y_train, y_test = train_test_split(
+        images, labels, test_size=0.2, random_state=seed
     )
 
+    scaler = MinMaxScaler(feature_range=(-1, 1))
+    x_train = scaler.fit_transform(x_train)
+    x_test = scaler.transform(x_test)
+
+    x_train = x_train.reshape(x_train.shape[0], -1)
+    x_test = x_test.reshape(x_test.shape[0], -1)
+
+    lb = LabelBinarizer()
+    y_train = lb.fit_transform(y_train)
+    y_test = lb.transform(y_test)
+
+    # ---------- Evaluation ----------
+    eval_meth = Evaluation_method(seed, images, labels)
+    wrapper = BFGSObjectiveWrapper(eval_meth)
+
+    # ---------- Dimension ----------
+    dimension = (
+        (FULL_IRIS + 1) * HID_LAYER_1 +
+        (HID_LAYER_1 + 1) * HID_LAYER_2 +
+        (HID_LAYER_2 + 1) * IRIS_OUTPUT
+    )
+
+    x0 = np.random.uniform(CLAMPS[0], CLAMPS[1], size=dimension)
+
+    # ---------- Optimizer ----------
+    optimizer = BFGS(
+        f_objective=wrapper.f_objective,
+        f_gradient=wrapper.f_gradient,
+        dimension=dimension,
+        x=x0,
+        max_fes=MAX_EVALS,
+        min_clamp=CLAMPS[0],
+        max_clamp=CLAMPS[1],
+        checkpoints=globals.def_checkpoints
+    )
+
+    optimizer.start()
+
+    best_x = optimizer.x
+
+    # ---------- Evaluation on checkpoints ----------
     result = []
-
     max_fes = MAX_EVALS
+
     for checkpoint in globals.def_checkpoints:
-        eval_checkpoint = max_fes * checkpoint
-
-        idx = np.abs(np.array(data.nums_evals) - eval_checkpoint).argmin()
-
-
-        closest_checkpoint = data.nums_evals[idx]
-
-        if( abs(data.nums_evals[idx] - eval_checkpoint ) < 50 ):
-            # closest_value = abs(float(curr_f["global_min"]) - data.midpoint_values[idx])
-            print("CHECKPOINT : ", checkpoint)
-            closest_value = eval_meth.test(data.best_solutions[idx])
-
-            result.append({
-                "algorithm": 'cmaes',
-                "dimension": dimension,
-                "run": run_id,
-                "checkpoint": checkpoint,
-                "error": [closest_value]
-            })
+        if checkpoint in optimizer.log and len(optimizer.log[checkpoint]) > 0:
+            error = optimizer.log[checkpoint][-1]
         else:
-            closest_value = 0
-            result.append({
-                "algorithm": 'cmaes',
-                "dimension": dimension,
-                "run": run_id,
-                "checkpoint": checkpoint,
-                "error": [closest_value]
-            })
+            error = 0
 
-    print(run_id)
+        result.append({
+            "algorithm": "bfgs",
+            "dimension": dimension,
+            "run": run_id,
+            "checkpoint": checkpoint,
+            "error": [error]
+        })
+
+    print("Run:", run_id)
     return result
-

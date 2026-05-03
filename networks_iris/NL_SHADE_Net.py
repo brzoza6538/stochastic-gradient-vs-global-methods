@@ -1,3 +1,4 @@
+
 import numpy as np
 
 import numpy as np
@@ -12,6 +13,8 @@ import time
 import numpy as np
 
 from Net import *
+from sklearn.preprocessing import MinMaxScaler
+from algorithms import NL_SHADE_RSP_MID
 
 
 
@@ -25,10 +28,12 @@ class Evaluation_method():
         self.y_train = np.array(self.y_train)
         self.y_test = np.array(self.y_test)
 
-        # Normalize pixel values to be between 0 and 1
-        self.x_train = (self.x_train / 255.0) * 2 - 1
-        self.x_test = (self.x_test / 255.0) * 2 - 1
+        # Normalize pixel values to be between -1 and 1
 
+        scaler = MinMaxScaler(feature_range=(-1, 1))
+
+        self.x_train = scaler.fit_transform(self.x_train)
+        self.x_test = scaler.transform(self.x_test)
         # Flatten the images
         self.x_train = self.x_train.reshape(self.x_train.shape[0], -1)
         self.x_test = self.x_test.reshape(self.x_test.shape[0], -1)
@@ -40,19 +45,17 @@ class Evaluation_method():
         self.y_test = self.lb.transform(self.y_test)
 
 
-        # Enmbedder
-        self.E_fully_connected_layer = EmbedLayer(input_size=FULL_MNIST, output_size=INPUT)
-        self.tanh_layer0 = Tanh()
+
 
         # Instantiate layers
-        self.fully_connected_layer1 = FullyConnected(input_size=INPUT, output_size=HID_LAYER_1)
+        self.fully_connected_layer1 = FullyConnected(input_size=FULL_IRIS, output_size=HID_LAYER_1)
         self.tanh_layer1 = Tanh()
         self.fully_connected_layer2 = FullyConnected(input_size=HID_LAYER_1, output_size=HID_LAYER_2)
         self.tanh_layer2 = Tanh()
-        self.fully_connected_layer3 = FullyConnected(input_size=HID_LAYER_2, output_size=OUTPUT)
+        self.fully_connected_layer3 = FullyConnected(input_size=HID_LAYER_2, output_size=IRIS_OUTPUT)
         self.tanh_layer3 = Tanh()
 
-        self.my_network = Network(layers=[self.E_fully_connected_layer, self.tanh_layer0,
+        self.my_network = Network(layers=[
                                     self.fully_connected_layer1,
                                     self.tanh_layer1, self.fully_connected_layer2,
                                     self.tanh_layer2, self.fully_connected_layer3,
@@ -112,7 +115,7 @@ class Evaluation_method():
         accuracy = correct_predictions / BATCH_SIZE
         # self.train_pointer += 0.0001 # HERE
 
-        print("anti acccc: ", (1 - accuracy), "lossss: ", (train_loss/BATCH_SIZE))
+        print("acccc: ", (accuracy), "lossss: ", (train_loss/BATCH_SIZE))
 
         # Calculate average loss and accuracy
         # return (1 - accuracy), BATCH_SIZE
@@ -160,67 +163,60 @@ class Evaluation_method():
     
 
 
+
+
 ##############
 
 
+def run_nlshade_net(run_id, images, labels, seed=None):
 
-
-def run_cmaes_net(run_id, images, labels, seed=None):
-
-    seed = seed or int((time.time() * 1000) + run_id)  # Generujemy nasiono na podstawie czasu i run_id
+    seed = seed or int((time.time() * 1000) + run_id)
     seed = seed % (2**32)
 
-    dimension = ((INPUT + 1)*HID_LAYER_1 + (HID_LAYER_1 + 1)*HID_LAYER_2 + (HID_LAYER_2 + 1)*OUTPUT)
-    x0 = np.random.uniform(CLAMPS[0], CLAMPS[1], size=dimension)
-    # switch_interval = 1
-    popsize = int(4 + np.floor(3 * np.log(dimension)))
+    dimension = ((FULL_IRIS + 1)*HID_LAYER_1 +
+                 (HID_LAYER_1 + 1)*HID_LAYER_2 +
+                 (HID_LAYER_2 + 1)*IRIS_OUTPUT)
+
+    pop_size = dimension * 5
+    x0 = np.random.uniform(CLAMPS[0], CLAMPS[1], size=(pop_size, dimension))
+
     eval_meth = Evaluation_method(seed, images, labels)
-    f_eval = Eval_wrapper(eval_meth.evaluate)
-
-
-    data = eswrapper(
-        x=x0,
-        fun=f_eval,
-        popsize=popsize,
-        maxevals=MAX_EVALS,
-        variation=CMAVariation.VANILLA,
-        seed=seed,
-        callback=None,
+    f_eval = eval_meth.evaluate
+    # ----------------------------
+    # NL-SHADE initialization
+    # ----------------------------
+    algo = NL_SHADE_RSP_MID(
+        f_objective=f_eval,
+        dimension=dimension,
+        X=x0,
+        max_fes=MAX_EVALS,
+        min_clamp=CLAMPS[0],
+        max_clamp=CLAMPS[1],
+        checkpoints=globals.def_checkpoints
     )
 
-    result = []
+    # run optimization
+    algo.start()
 
+    result = []
     max_fes = MAX_EVALS
+
     for checkpoint in globals.def_checkpoints:
         eval_checkpoint = max_fes * checkpoint
 
-        idx = np.abs(np.array(data.nums_evals) - eval_checkpoint).argmin()
-
-
-        closest_checkpoint = data.nums_evals[idx]
-
-        if( abs(data.nums_evals[idx] - eval_checkpoint ) < 50 ):
-            # closest_value = abs(float(curr_f["global_min"]) - data.midpoint_values[idx])
-            print("CHECKPOINT : ", checkpoint)
-            closest_value = eval_meth.test(data.best_solutions[idx])
-
-            result.append({
-                "algorithm": 'cmaes',
-                "dimension": dimension,
-                "run": run_id,
-                "checkpoint": checkpoint,
-                "error": [closest_value]
-            })
+        # closest achieved checkpoint (based on actual evaluations)
+        if len(algo.log[checkpoint]) > 0:
+            closest_value = algo.log[checkpoint][-1]
         else:
             closest_value = 0
-            result.append({
-                "algorithm": 'cmaes',
-                "dimension": dimension,
-                "run": run_id,
-                "checkpoint": checkpoint,
-                "error": [closest_value]
-            })
+
+        result.append({
+            "algorithm": "nlshade",
+            "dimension": dimension,
+            "run": run_id,
+            "checkpoint": checkpoint,
+            "error": [closest_value]
+        })
 
     print(run_id)
     return result
-
