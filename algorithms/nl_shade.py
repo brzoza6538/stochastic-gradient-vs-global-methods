@@ -48,6 +48,8 @@ class NL_SHADE_RSP_MID():
         self.dimension = dimension
 
         self.log = {checkpoint: [] for checkpoint in self.checkpoints}
+        self.help_log = {checkpoint: [] for checkpoint in self.checkpoints}
+
         self.checkpoints = checkpoints
         self.seen_checkpoints = set()
         self.objective_limit = objective_limit or self.dimension * self.max_fes
@@ -139,6 +141,8 @@ class NL_SHADE_RSP_MID():
             for checkpoint in self.checkpoints:
                 if checkpoint not in self.seen_checkpoints:
                     self.log[checkpoint].append(float(0 if self.global_best_fit < self.smallest_val else self.global_best_fit))
+                    self.help_log[checkpoint].append(self.global_best_sol.copy())
+
                     self.seen_checkpoints.add(checkpoint)
 
         for checkpoint in self.checkpoints:
@@ -161,6 +165,8 @@ class NL_SHADE_RSP_MID():
                 print(f"chpt {checkpoint} cntr: ", self.objective_counter)
 
                 self.log[checkpoint].append(float(0 if self.global_best_fit < self.smallest_val else self.global_best_fit))
+                self.help_log[checkpoint].append(self.global_best_sol.copy())
+
                 self.seen_checkpoints.add(checkpoint)
         
             

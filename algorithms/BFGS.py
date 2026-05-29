@@ -118,6 +118,8 @@ class BFGS():
         self.smallest_val = smallest_val
 
         self.log = {checkpoint: [] for checkpoint in self.checkpoints}
+        self.help_log = {checkpoint: [] for checkpoint in self.checkpoints}
+
         self.seen_checkpoints = set()
 
         self.objective_counter = 0
@@ -201,11 +203,9 @@ class BFGS():
 
         for checkpoint in self.checkpoints:
             if self.log[checkpoint] == []:
-                # self.log[checkpoint].append(0 if self.error < self.smallest_val else self.error)
-                self.log[checkpoint].append({
-                    "error": 0 if self.error < self.smallest_val else self.error,
-                    "x": self.x.copy()
-})
+                self.log[checkpoint].append(0 if self.error < self.smallest_val else self.error)
+                self.help_log[checkpoint].append(self.x.copy())
+
 
 
     # def collect_data(self):
@@ -226,11 +226,10 @@ class BFGS():
                 checkpoint not in self.seen_checkpoints
                 and self.objective_counter >= checkpoint_fes
             ):
+                self.log[checkpoint].append(0 if self.error < self.smallest_val else self.error)
+                self.help_log[checkpoint].append(self.x.copy())
 
-                self.log[checkpoint].append({
-                    "error": 0 if self.error < self.smallest_val else self.error,
-                    "x": self.x.copy()
-                })
+
 
                 self.seen_checkpoints.add(checkpoint)
 

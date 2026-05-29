@@ -1,3 +1,7 @@
+
+import numpy as np
+
+import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelBinarizer
 
@@ -6,12 +10,11 @@ from algorithms import globals
 from algorithms import CMAVariation, eswrapper, Eval_wrapper 
 
 import time
+import numpy as np
 
 from Net import *
 from sklearn.preprocessing import MinMaxScaler
-from algorithms.BFGS import BFGS
-
-
+from algorithms import NL_SHADE_RSP_MID
 
 
 
@@ -158,7 +161,6 @@ class Evaluation_method():
         # Calculate average loss and accuracy
         return accuracy
     
-    
 
     def test_error(self, x):
         # Y = self.objective_f.evaluate(x)
@@ -212,108 +214,63 @@ class Evaluation_method():
         return (train_loss/BATCH_SIZE)
 
 
-# ---------- Finite difference gradient ----------
-def finite_diff_grad(f, x, eps=1e-5):
-    grad = np.zeros_like(x)
-    fx = f(x)
-
-    for i in range(len(x)):
-        x_eps = x.copy()
-        x_eps[i] += eps
-        grad[i] = (f(x_eps) - fx) / eps
-
-    return grad
 
 
+##############
 
 
-
-
-# ---------- Wrapper objective ----------
-class BFGSObjectiveWrapper:
-    def __init__(self, eval_meth):
-        self.eval_meth = eval_meth
-
-    def f_objective(self, x):
-        loss, evals = self.eval_meth.evaluate(x)
-        return loss, evals
-
-    def f_gradient(self, x):
-        grad = finite_diff_grad(lambda v: self.eval_meth.evaluate(v)[0], x)
-        return grad, len(x) * 2  # rough eval count
-
-
-# ---------- Main runner ----------
-def run_bfgs_net(run_id, images, labels, seed=None):
+def run_nlshade_net(run_id, images, labels, seed=None):
 
     seed = seed or int((time.time() * 1000) + run_id)
     seed = seed % (2**32)
 
-    # ---------- Data ----------
-    x_train, x_test, y_train, y_test = train_test_split(
-        images, labels, test_size=0.2, random_state=seed
-    )
+    dimension = ((FULL_IRIS + 1)*HID_LAYER_1 +
+                 (HID_LAYER_1 + 1)*HID_LAYER_2 +
+                 (HID_LAYER_2 + 1)*IRIS_OUTPUT)
 
-    scaler = MinMaxScaler(feature_range=(-1, 1))
-    x_train = scaler.fit_transform(x_train)
-    x_test = scaler.transform(x_test)
+    pop_size = dimension * 5
+    x0 = np.random.uniform(CLAMPS[0], CLAMPS[1], size=(pop_size, dimension))
 
-    x_train = x_train.reshape(x_train.shape[0], -1)
-    x_test = x_test.reshape(x_test.shape[0], -1)
-
-    lb = LabelBinarizer()
-    y_train = lb.fit_transform(y_train)
-    y_test = lb.transform(y_test)
-
-    # ---------- Evaluation ----------
     eval_meth = Evaluation_method(seed, images, labels)
-    wrapper = BFGSObjectiveWrapper(eval_meth)
-
-    # ---------- Dimension ----------
-    dimension = (
-        (FULL_IRIS + 1) * HID_LAYER_1 +
-        (HID_LAYER_1 + 1) * HID_LAYER_2 +
-        (HID_LAYER_2 + 1) * IRIS_OUTPUT
-    )
-
-    x0 = np.random.uniform(CLAMPS[0], CLAMPS[1], size=dimension)
-
-    # ---------- Optimizer ----------
-    optimizer = BFGS(
-        f_objective=wrapper.f_objective,
-        f_gradient=wrapper.f_gradient,
+    f_eval = eval_meth.evaluate
+    # ----------------------------
+    # NL-SHADE initialization
+    # ----------------------------
+    algo = NL_SHADE_RSP_MID(
+        f_objective=f_eval,
         dimension=dimension,
-        x=x0,
+        X=x0,
         max_fes=MAX_EVALS,
         min_clamp=globals.def_clamps[0],
         max_clamp=globals.def_clamps[1],
         checkpoints=globals.def_checkpoints
     )
 
-    optimizer.start()
+    # run optimization
+    algo.start()
 
-    best_x = optimizer.x
-
-    # ---------- Evaluation on checkpoints ----------
     result = []
     max_fes = MAX_EVALS
 
     for checkpoint in globals.def_checkpoints:
-        if checkpoint in optimizer.log and len(optimizer.log[checkpoint]) > 0:
-            checkpoint_data = optimizer.log[checkpoint][-1]
-            checkpoint_x = checkpoint_data["x"]
+        eval_checkpoint = max_fes * checkpoint
+
+        # closest achieved checkpoint (based on actual evaluations)
+        if len(algo.log[checkpoint]) > 0:
+            closest_value = algo.log[checkpoint][-1]
+            checkpoint_x = algo.help_log[checkpoint][-1]
             loss_grad = eval_meth.test_error(checkpoint_x)
 
         else:
-            loss_grad = 0
+            closest_value = 0
 
         result.append({
-            "algorithm": "bfgs",
+            "algorithm": "nlshade",
             "dimension": dimension,
             "run": run_id,
             "checkpoint": checkpoint,
             "error": [loss_grad]
         })
 
-    print("Run:", run_id)
+    print(run_id)
     return result
