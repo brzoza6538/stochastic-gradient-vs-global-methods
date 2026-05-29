@@ -190,8 +190,8 @@ def run_nlshade_net(run_id, images, labels, seed=None):
         dimension=dimension,
         X=x0,
         max_fes=MAX_EVALS,
-        min_clamp=CLAMPS[0],
-        max_clamp=CLAMPS[1],
+        min_clamp=globals.def_clamps[0],
+        max_clamp=globals.def_clamps[1],
         checkpoints=globals.def_checkpoints
     )
 

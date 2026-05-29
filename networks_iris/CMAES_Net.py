@@ -161,6 +161,57 @@ class Evaluation_method():
     
 
 
+    def test_error(self, x):
+        # Y = self.objective_f.evaluate(x)
+        # error = abs(Y - self.global_min)
+        # evaluations_used = 1
+        # return error, evaluations_used
+        pointer = 0
+
+        for layer in self.my_network.layers:
+            if isinstance(layer, FullyConnected):
+                snippet = x[pointer : pointer + (layer.input_size * layer.output_size)]
+                snippet = snippet.reshape(layer.input_size, layer.output_size)
+                layer.weights = snippet
+                pointer += layer.input_size * layer.output_size
+
+                snippet = x[pointer : pointer + layer.output_size]
+                snippet = snippet.reshape(1, layer.output_size)
+                layer.bias = snippet
+                pointer += layer.output_size
+
+        train_loss = 0
+        correct_predictions = 0
+
+        if int(self.train_pointer) * BATCH_SIZE > len(self.x_train):
+            self.train_pointer = 0
+
+        l = int(self.train_pointer) * BATCH_SIZE
+
+
+
+        for x_i, y_true in zip(self.x_train[ l :  l + BATCH_SIZE], self.y_train[ l : l + BATCH_SIZE]):
+            #x = x.reshape(1, -1)
+            y_pred = np.maximum(self.my_network(x_i), 0)
+
+            # Calculate loss (you might want to use the proper loss function here)
+            current_loss = self.my_loss.calculate_loss(y_true, y_pred)
+            train_loss += np.mean(current_loss)
+
+            # Check if the prediction is correct
+            predicted_label = np.argmax(y_pred)
+            true_label = np.argmax(y_true)
+            correct_predictions += (predicted_label == true_label)
+        
+        accuracy = correct_predictions / BATCH_SIZE
+        # self.train_pointer += 0.0001 # HERE
+
+        print("acccc: ", (accuracy), "lossss: ", (train_loss/BATCH_SIZE))
+
+        # Calculate average loss and accuracy
+        # return (1 - accuracy), BATCH_SIZE
+        return (train_loss/BATCH_SIZE)
+
 ##############
 
 
@@ -203,7 +254,7 @@ def run_cmaes_net(run_id, images, labels, seed=None):
         if( abs(data.nums_evals[idx] - eval_checkpoint ) < 50 ):
             # closest_value = abs(float(curr_f["global_min"]) - data.midpoint_values[idx])
             print("CHECKPOINT : ", checkpoint)
-            closest_value = eval_meth.test(data.best_solutions[idx])
+            closest_value = eval_meth.test_error(data.best_solutions[idx])
 
             result.append({
                 "algorithm": 'cmaes',

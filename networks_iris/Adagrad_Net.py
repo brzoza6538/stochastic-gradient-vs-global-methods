@@ -34,11 +34,20 @@ class AdagradNetwork:
             x = layer.forward(x)
         return x
 
-    def calculate_test_acc(self, x_test, y_test):
+    def calculate_acc_checkpoint(self, x_test, y_test):
         y_pred = self(x_test)
+
+
         pred = np.argmax(y_pred, axis=1)
         true = np.argmax(y_test, axis=1)
         return np.mean(pred == true)
+
+    def calculate_loss_checkpoint(self, x_test, y_test):
+        y_pred = self(x_test)
+
+        loss_grad = self.loss.calculate_loss(y_test, y_pred)
+        # mean loss over all samples
+        return np.mean(loss_grad)
 
     def fit(self,
             x_train: np.ndarray,
@@ -119,8 +128,9 @@ class AdagradNetwork:
                     checkpoint_fes = int(checkpoint * MAX_EVALS)
 
                     if checkpoint not in self.seen_checkpoints and self.counter >= checkpoint_fes:
-                        acc = self.calculate_test_acc(x_test, y_test)
-                        self.log[checkpoint].append(acc)
+                        loss_grad = self.calculate_loss_checkpoint(x_test, y_test)
+                        acc = self.calculate_acc_checkpoint(x_test, y_test)
+                        self.log[checkpoint].append(loss_grad)
                         self.seen_checkpoints.add(checkpoint)
 
                         if verbose:
@@ -182,7 +192,7 @@ def run_adagrad_net(run_id, images, labels,  seed=None):
                                 tanh_layer1, fully_connected_layer2,
                                 tanh_layer2, fully_connected_layer3,
                                 tanh_layer3
-                                ], learning_rate=0.01)
+                                ], learning_rate=0.05)
 
     # Compile the network with a loss function
 

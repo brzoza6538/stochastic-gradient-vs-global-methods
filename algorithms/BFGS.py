@@ -137,8 +137,25 @@ class BFGS():
         return np.clip(x, self.min_clamp, self.max_clamp)
 
 
+    # def wrapped_f_objective(self, x):
+    #     x_proj = self.project_x(x)
+
+    #     if self.objective_counter >= self.objective_limit:
+    #         raise StopIteration("Objective limit reached.")
+
+    #     error, evals = self.f_objective(x_proj)
+
+    #     self.objective_counter += evals
+    #     self.error = error
+    #     self.collect_data()
+    #     return error
+
+
+
     def wrapped_f_objective(self, x):
         x_proj = self.project_x(x)
+
+        self.x = x_proj.copy()
 
         if self.objective_counter >= self.objective_limit:
             raise StopIteration("Objective limit reached.")
@@ -147,8 +164,11 @@ class BFGS():
 
         self.objective_counter += evals
         self.error = error
+
         self.collect_data()
+
         return error
+
 
     def wrapped_grad(self, x):
         x_proj = self.project_x(x)
@@ -181,17 +201,38 @@ class BFGS():
 
         for checkpoint in self.checkpoints:
             if self.log[checkpoint] == []:
-                self.log[checkpoint].append(0 if self.error < self.smallest_val else self.error)
+                # self.log[checkpoint].append(0 if self.error < self.smallest_val else self.error)
+                self.log[checkpoint].append({
+                    "error": 0 if self.error < self.smallest_val else self.error,
+                    "x": self.x.copy()
+})
+
+
+    # def collect_data(self):
+    #     for checkpoint in self.checkpoints:
+    #         checkpoint_fes = int(checkpoint * self.objective_limit)
+
+    #         if checkpoint not in self.seen_checkpoints and self.objective_counter >= checkpoint_fes:
+    #             self.log[checkpoint].append(0 if self.error < self.smallest_val else self.error)
+    #             self.seen_checkpoints.add(checkpoint)
 
 
     def collect_data(self):
         for checkpoint in self.checkpoints:
+
             checkpoint_fes = int(checkpoint * self.objective_limit)
 
-            if checkpoint not in self.seen_checkpoints and self.objective_counter >= checkpoint_fes:
-                self.log[checkpoint].append(0 if self.error < self.smallest_val else self.error)
-                self.seen_checkpoints.add(checkpoint)
+            if (
+                checkpoint not in self.seen_checkpoints
+                and self.objective_counter >= checkpoint_fes
+            ):
 
+                self.log[checkpoint].append({
+                    "error": 0 if self.error < self.smallest_val else self.error,
+                    "x": self.x.copy()
+                })
+
+                self.seen_checkpoints.add(checkpoint)
 
     def return_epoch_log(self):
         return self.objective_counter, self.error

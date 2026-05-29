@@ -16,7 +16,7 @@ HID_LAYER_2 = 3
 # OUTPUT = 10
 IRIS_OUTPUT = 3
 
-BATCH_SIZE = 150
+BATCH_SIZE = 120
 
 MAX_EVALS = 100000
 
@@ -75,7 +75,7 @@ class FullyConnected(Layer):
 
     def forward(self, x: np.ndarray) -> np.ndarray:
         self.inputs = x
-        info = (np.matmul(x, self.weights) + self.bias)
+        info = (np.matmul(x, self.weights) + (self.bias * self.input_size))
 
         return info
 
@@ -137,8 +137,15 @@ class Network:
 
         return(x)
 
+    def calculate_loss_checkpoint(self, x_test, y_test):
+        y_pred = self(x_test)
 
-    def calculate_test_acc(self, x_test, y_test):
+        loss_grad = self.loss.calculate_loss(y_test, y_pred)
+        # mean loss over all samples
+        return np.mean(loss_grad)
+
+
+    def calculate_acc_checkpoint(self, x_test, y_test):
         y_pred = self(x_test)  # forward entire test set at once
 
         pred = np.argmax(y_pred, axis=1)
@@ -232,9 +239,10 @@ class Network:
                     checkpoint_fes = int(checkpoint * MAX_EVALS)
                     if checkpoint not in self.seen_checkpoints and self.counter >= checkpoint_fes:
                         print(self.counter)
-                        error = self.calculate_test_acc(x_test, y_test)
-                        print(error)
-                        self.log[checkpoint].append(0 if error < globals.def_smallest_val else error)
+                        acc = self.calculate_acc_checkpoint(x_test, y_test)
+                        loss_grad = self.calculate_loss_checkpoint(x_test, y_test)
+                        print(acc)
+                        self.log[checkpoint].append(loss_grad)
                         self.seen_checkpoints.add(checkpoint)
 
                 # Stop if MAX_EVALS reached
