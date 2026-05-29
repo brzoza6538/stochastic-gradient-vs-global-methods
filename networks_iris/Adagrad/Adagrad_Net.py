@@ -24,7 +24,7 @@ class AdagradNetwork:
         self.checkpoints = globals.def_checkpoints
         self.log = {checkpoint: [] for checkpoint in self.checkpoints}
 
-        self.E = 1e-8  # epsilon for numerical stability
+        self.E = 1e-8
 
     def compile(self, loss):
         self.loss = loss
@@ -46,7 +46,6 @@ class AdagradNetwork:
         y_pred = self(x_test)
 
         loss_grad = self.loss.calculate_loss(y_test, y_pred)
-        # mean loss over all samples
         return np.mean(loss_grad)
 
     def fit(self,
@@ -60,17 +59,11 @@ class AdagradNetwork:
         self.counter = 0
         self.seen_checkpoints = set()
 
-        # -----------------------------
-        # INIT ADAGRAD STATE
-        # -----------------------------
         for layer in self.layers:
             if isinstance(layer, FullyConnected):
                 layer.w_cache = np.zeros_like(layer.weights)
                 layer.b_cache = np.zeros_like(layer.bias)
 
-        # -----------------------------
-        # TRAIN LOOP
-        # -----------------------------
         while self.counter < MAX_EVALS:
 
             permutation = np.random.permutation(num_samples)
@@ -83,47 +76,38 @@ class AdagradNetwork:
                 x_batch = x_train_shuffled[start_idx:end_idx]
                 y_batch = y_train_shuffled[start_idx:end_idx]
 
-                # -------- FORWARD --------
                 y_pred = x_batch
                 for layer in self.layers:
                     y_pred = layer.forward(y_pred)
 
-                # -------- BACKWARD --------
                 loss_grad = self.loss.loss_derivative(y_batch, y_pred)
 
                 for layer in reversed(self.layers):
                     loss_grad = layer.backward(loss_grad)
 
-                # -------- ADAGRAD UPDATE --------
                 for layer in self.layers:
                     if isinstance(layer, FullyConnected):
 
-                        # accumulate squared gradients
                         layer.w_cache += layer.weights_derivative ** 2
                         layer.b_cache += layer.bias_derivative ** 2
 
-                        # update weights
                         layer.weights -= (
                             self.learning_rate *
                             layer.weights_derivative /
                             (np.sqrt(layer.w_cache) + self.E)
                         )
 
-                        # update bias
                         layer.bias -= (
                             self.learning_rate *
                             layer.bias_derivative /
                             (np.sqrt(layer.b_cache) + self.E)
                         )
 
-                        # reset gradients
                         layer.weights_derivative.fill(0)
                         layer.bias_derivative.fill(0)
 
-                # -------- COUNTERS --------
                 self.counter += len(x_batch)
 
-                # -------- CHECKPOINTS --------
                 for checkpoint in self.checkpoints:
                     checkpoint_fes = int(checkpoint * MAX_EVALS)
 
@@ -163,22 +147,17 @@ def run_adagrad_net(run_id, images, labels,  seed=None):
     y_train = np.array(y_train)
     y_test = np.array(y_test)
 
-    # # Normalize pixel values to be between 0 and 1
-    # x_train = (x_train / 255.0) * 2 - 1
-    # x_test = (x_test / 255.0) * 2 - 1
 
     scaler = MinMaxScaler(feature_range=(-1, 1))
 
     x_train = scaler.fit_transform(x_train)
     x_test = scaler.transform(x_test)
     
-    # Convert class vectors to binary class matrices
     lb = LabelBinarizer()
     y_train = lb.fit_transform(y_train)
     y_test = lb.transform(y_test)
 
 
-    # Instantiate layers
     fully_connected_layer1 = FullyConnected(input_size=FULL_IRIS, output_size=HID_LAYER_1)
     tanh_layer1 = Tanh()
     fully_connected_layer2 = FullyConnected(input_size=HID_LAYER_1, output_size=HID_LAYER_2)
@@ -186,7 +165,6 @@ def run_adagrad_net(run_id, images, labels,  seed=None):
     fully_connected_layer3 = FullyConnected(input_size=HID_LAYER_2, output_size=IRIS_OUTPUT)
     tanh_layer3 = Tanh()
 
-    # Instantiate the network
     my_network = AdagradNetwork(layers=[
                                 fully_connected_layer1,
                                 tanh_layer1, fully_connected_layer2,
@@ -194,13 +172,10 @@ def run_adagrad_net(run_id, images, labels,  seed=None):
                                 tanh_layer3
                                 ], learning_rate=0.05)
 
-    # Compile the network with a loss function
 
     my_loss = Loss(def_loss,def_derivative_loss)
 
     my_network.compile(loss=my_loss)
-
-    # Train the network
 
     my_network.fit(x_train, y_train, x_test, y_test, verbose=1)
 

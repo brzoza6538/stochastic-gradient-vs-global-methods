@@ -28,18 +28,15 @@ class Evaluation_method():
         self.y_train = np.array(self.y_train)
         self.y_test = np.array(self.y_test)
 
-        # Normalize pixel values to be between -1 and 1
 
         scaler = MinMaxScaler(feature_range=(-1, 1))
 
         self.x_train = scaler.fit_transform(self.x_train)
         self.x_test = scaler.transform(self.x_test)
-        # Flatten the images
         self.x_train = self.x_train.reshape(self.x_train.shape[0], -1)
         self.x_test = self.x_test.reshape(self.x_test.shape[0], -1)
 
 
-        # Convert class vectors to binary class matrices
         self.lb = LabelBinarizer()
         self.y_train = self.lb.fit_transform(self.y_train)
         self.y_test = self.lb.transform(self.y_test)
@@ -47,7 +44,6 @@ class Evaluation_method():
 
 
 
-        # Instantiate layers
         self.fully_connected_layer1 = FullyConnected(input_size=FULL_IRIS, output_size=HID_LAYER_1)
         self.tanh_layer1 = Tanh()
         self.fully_connected_layer2 = FullyConnected(input_size=HID_LAYER_1, output_size=HID_LAYER_2)
@@ -62,7 +58,6 @@ class Evaluation_method():
                                     self.tanh_layer3
                                     ], learning_rate=0.01)
 
-        # Compile the network with a loss function
 
         self.my_loss = Loss(def_loss,def_derivative_loss)
 
@@ -103,11 +98,9 @@ class Evaluation_method():
             #x = x.reshape(1, -1)
             y_pred = np.maximum(self.my_network(x_i), 0)
 
-            # Calculate loss (you might want to use the proper loss function here)
             current_loss = self.my_loss.calculate_loss(y_true, y_pred)
             train_loss += np.mean(current_loss)
 
-            # Check if the prediction is correct
             predicted_label = np.argmax(y_pred)
             true_label = np.argmax(y_true)
             correct_predictions += (predicted_label == true_label)
@@ -148,17 +141,14 @@ class Evaluation_method():
             #x = x.reshape(1, -1)
             y_pred = self.my_network(x_i)
 
-            # Calculate loss (you might want to use the proper loss function here)
             current_loss = self.my_loss.calculate_loss(y_true, y_pred)
             test_loss += current_loss
 
-            # Check if the prediction is correct
             predicted_label = np.argmax(y_pred)
             true_label = np.argmax(y_true)
             correct_predictions += (predicted_label == true_label)
         
         accuracy = correct_predictions / len(self.x_test)
-        # Calculate average loss and accuracy
         return accuracy
     
 
@@ -195,11 +185,9 @@ class Evaluation_method():
             #x = x.reshape(1, -1)
             y_pred = np.maximum(self.my_network(x_i), 0)
 
-            # Calculate loss (you might want to use the proper loss function here)
             current_loss = self.my_loss.calculate_loss(y_true, y_pred)
             train_loss += np.mean(current_loss)
 
-            # Check if the prediction is correct
             predicted_label = np.argmax(y_pred)
             true_label = np.argmax(y_true)
             correct_predictions += (predicted_label == true_label)
@@ -216,7 +204,7 @@ class Evaluation_method():
 
 
 
-##############
+
 
 
 def run_nlshade_net(run_id, images, labels, seed=None):
@@ -233,9 +221,7 @@ def run_nlshade_net(run_id, images, labels, seed=None):
 
     eval_meth = Evaluation_method(seed, images, labels)
     f_eval = eval_meth.evaluate
-    # ----------------------------
-    # NL-SHADE initialization
-    # ----------------------------
+
     algo = NL_SHADE_RSP_MID(
         f_objective=f_eval,
         dimension=dimension,
@@ -246,7 +232,6 @@ def run_nlshade_net(run_id, images, labels, seed=None):
         checkpoints=globals.def_checkpoints
     )
 
-    # run optimization
     algo.start()
 
     result = []
@@ -255,7 +240,6 @@ def run_nlshade_net(run_id, images, labels, seed=None):
     for checkpoint in globals.def_checkpoints:
         eval_checkpoint = max_fes * checkpoint
 
-        # closest achieved checkpoint (based on actual evaluations)
         if len(algo.log[checkpoint]) > 0:
             closest_value = algo.log[checkpoint][-1]
             checkpoint_x = algo.help_log[checkpoint][-1]

@@ -25,22 +25,16 @@ def run_adam_net(run_id, images, labels,  seed=None):
     y_train = np.array(y_train)
     y_test = np.array(y_test)
 
-    # # Normalize pixel values to be between 0 and 1
-    # x_train = (x_train / 255.0) * 2 - 1
-    # x_test = (x_test / 255.0) * 2 - 1
-
     scaler = MinMaxScaler(feature_range=(-1, 1))
 
     x_train = scaler.fit_transform(x_train)
     x_test = scaler.transform(x_test)
     
-    # Convert class vectors to binary class matrices
     lb = LabelBinarizer()
     y_train = lb.fit_transform(y_train)
     y_test = lb.transform(y_test)
 
 
-    # Instantiate layers
     fully_connected_layer1 = FullyConnected(input_size=FULL_IRIS, output_size=HID_LAYER_1)
     tanh_layer1 = Tanh()
     fully_connected_layer2 = FullyConnected(input_size=HID_LAYER_1, output_size=HID_LAYER_2)
@@ -48,7 +42,6 @@ def run_adam_net(run_id, images, labels,  seed=None):
     fully_connected_layer3 = FullyConnected(input_size=HID_LAYER_2, output_size=IRIS_OUTPUT)
     tanh_layer3 = Tanh()
 
-    # Instantiate the network
     my_network = Network(layers=[
                                 fully_connected_layer1,
                                 tanh_layer1, fully_connected_layer2,
@@ -56,13 +49,10 @@ def run_adam_net(run_id, images, labels,  seed=None):
                                 tanh_layer3
                                 ], learning_rate=0.01)
 
-    # Compile the network with a loss function
 
     my_loss = Loss(def_loss,def_derivative_loss)
 
     my_network.compile(loss=my_loss)
-
-    # Train the network
 
     my_network.fit(x_train, y_train, x_test, y_test, verbose=1)
 

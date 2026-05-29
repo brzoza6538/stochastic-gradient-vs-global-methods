@@ -5,8 +5,8 @@
 #SBATCH --mem=1GB
 #SBATCH --time=24:00:00
 #SBATCH -p plgrid
-#SBATCH --output="networks_iris/CMAES_output.log"
-#SBATCH --error="networks_iris/CMAES_error.log"
+#SBATCH --output="networks_iris/CMAES/CMAES_output.log"
+#SBATCH --error="networks_iris/CMAES/CMAES_error.log"
 
 
 
@@ -15,5 +15,5 @@ BASE_DIR=~/$(basename $SLURM_SUBMIT_DIR)
 cd $SLURM_SUBMIT_DIR
 source $BASE_DIR/.venv/bin/activate
 export PYTHONPATH=$PYTHONPATH:$BASE_DIR
-cd networks_iris
+cd networks_iris/CMAES
 python3 CMAES_script.py
