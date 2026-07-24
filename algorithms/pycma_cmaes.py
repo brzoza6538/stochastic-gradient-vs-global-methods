@@ -569,6 +569,7 @@ def lincmaes(
     seed: int = 0,
     get_step_information: bool = False,
     callback: Union[CMAExperimentCallback, None] = None,
+    sigma: float = None,
 ) -> Tuple[CMAResult, Optional[StepSizeResult]]:
     midpoint_values = []
     evals_values = []
@@ -588,7 +589,7 @@ def lincmaes(
         inopts["seed"] = seed
 
     x = np.clip(x, def_clamps[0], def_clamps[1])  # TODO - inaczej
-    sigm = abs(def_clamps[0] - def_clamps[1]) / 3
+    sigm = sigma or abs(def_clamps[0] - def_clamps[1]) / 3
     es = CMAEvolutionStrategy(x, sigma0=sigm, inopts=inopts)
 
     while not es.stop():
@@ -735,6 +736,7 @@ def eswrapper(
     gradient_cost: int = 0,
     seed: int = 0,
     callback: Union[CMAExperimentCallback, None] = None,
+    sigma: float = None,
 ) -> CMAResult:
     """Wraps all variations of the CMA-ES into a single function with a common interface."""
 
@@ -749,6 +751,7 @@ def eswrapper(
             gradient_type=variation,
             gradient_cost=gradient_cost,
             seed=seed,
+            sigma=sigma
         )[0]
 
     midpoint_values = []
@@ -764,9 +767,9 @@ def eswrapper(
         inopts["maxfevals"] = maxevals
     if seed:
         inopts["seed"] = seed
-
+    
     x = np.clip(x, def_clamps[0], def_clamps[1])  # TODO - inaczej
-    sigm = abs(def_clamps[0] - def_clamps[1]) / 3
+    sigm = sigma or abs(def_clamps[0] - def_clamps[1]) / 3
     es = CMAEvolutionStrategy(x, sigma0=sigm, inopts=inopts)
 
     while not es.stop():
@@ -780,6 +783,8 @@ def eswrapper(
                 raise ValueError("Function returned NaN or inf")
 
             es.tell(X, fit_vals)
+            print(f"++++++++++Epoch {es.countiter}: best f = {es.best.f}")
+
 
         except ValueError as e:
             with open("error.csv", "a") as file:
