@@ -1,7 +1,3 @@
-
-import numpy as np
-
-import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelBinarizer
 
@@ -10,11 +6,13 @@ from algorithms import globals
 from algorithms import CMAVariation, eswrapper, Eval_wrapper 
 
 import time
-import numpy as np
 
 from Net import *
 from sklearn.preprocessing import MinMaxScaler
-from algorithms import NL_SHADE_RSP_MID
+from algorithms.BFGS import BFGS
+
+
+
 
 
 class Evaluation_method():
@@ -32,6 +30,7 @@ class Evaluation_method():
 
         self.x_train = scaler.fit_transform(self.x_train)
         self.x_test = scaler.transform(self.x_test)
+
         self.x_train = self.x_train.reshape(self.x_train.shape[0], -1)
         self.x_test = self.x_test.reshape(self.x_test.shape[0], -1)
 
@@ -40,11 +39,14 @@ class Evaluation_method():
         self.y_train = self.lb.fit_transform(self.y_train)
         self.y_test = self.lb.transform(self.y_test)
 
-        self.fully_connected_layer1 = FullyConnected(input_size=FULL_IRIS, output_size=HID_LAYER_1)
+
+
+
+        self.fully_connected_layer1 = FullyConnected(input_size=FULL_MNIST, output_size=HID_LAYER_1)
         self.tanh_layer1 = Tanh()
         self.fully_connected_layer2 = FullyConnected(input_size=HID_LAYER_1, output_size=HID_LAYER_2)
         self.tanh_layer2 = Tanh()
-        self.fully_connected_layer3 = FullyConnected(input_size=HID_LAYER_2, output_size=IRIS_OUTPUT)
+        self.fully_connected_layer3 = FullyConnected(input_size=HID_LAYER_2, output_size=MNIST_OUTPUT)
         self.tanh_layer3 = Tanh()
 
         self.my_network = Network(layers=[
@@ -147,6 +149,7 @@ class Evaluation_method():
         accuracy = correct_predictions / len(self.x_test)
         return accuracy
     
+    
 
     def test_error(self, x):
         # Y = self.objective_f.evaluate(x)
@@ -198,59 +201,99 @@ class Evaluation_method():
         return (train_loss/BATCH_SIZE)
 
 
+def finite_diff_grad(f, x, eps=1e-5):
+    grad = np.zeros_like(x)
+    fx = f(x)
+
+    for i in range(len(x)):
+        x_eps = x.copy()
+        x_eps[i] += eps
+        grad[i] = (f(x_eps) - fx) / eps
+
+    return grad
 
 
 
 
 
-def run_nlshade_net(run_id, images, labels, seed=None):
+
+class BFGSObjectiveWrapper:
+    def __init__(self, eval_meth):
+        self.eval_meth = eval_meth
+
+    def f_objective(self, x):
+        loss, evals = self.eval_meth.evaluate(x)
+        return loss, evals
+
+    def f_gradient(self, x):
+        grad = finite_diff_grad(lambda v: self.eval_meth.evaluate(v)[0], x)
+        return grad, len(x) * 2
+
+
+def run_bfgs_net(run_id, images, labels, seed=None):
 
     seed = seed or int((time.time() * 1000) + run_id)
     seed = seed % (2**32)
 
-    dimension = ((FULL_IRIS + 1)*HID_LAYER_1 +
-                 (HID_LAYER_1 + 1)*HID_LAYER_2 +
-                 (HID_LAYER_2 + 1)*IRIS_OUTPUT)
+    x_train, x_test, y_train, y_test = train_test_split(
+        images, labels, test_size=0.2, random_state=seed
+    )
 
-    pop_size = dimension * 5
-    x0 = np.random.uniform(CLAMPS[0], CLAMPS[1], size=(pop_size, dimension))
+    scaler = MinMaxScaler(feature_range=(-1, 1))
+    x_train = scaler.fit_transform(x_train)
+    x_test = scaler.transform(x_test)
+
+    x_train = x_train.reshape(x_train.shape[0], -1)
+    x_test = x_test.reshape(x_test.shape[0], -1)
+
+    lb = LabelBinarizer()
+    y_train = lb.fit_transform(y_train)
+    y_test = lb.transform(y_test)
 
     eval_meth = Evaluation_method(seed, images, labels)
-    f_eval = eval_meth.evaluate
+    wrapper = BFGSObjectiveWrapper(eval_meth)
 
-    algo = NL_SHADE_RSP_MID(
-        f_objective=f_eval,
+    dimension = (
+        (FULL_MNIST + 1) * HID_LAYER_1 +
+        (HID_LAYER_1 + 1) * HID_LAYER_2 +
+        (HID_LAYER_2 + 1) * MNIST_OUTPUT
+    )
+
+    x0 = np.random.uniform(CLAMPS[0], CLAMPS[1], size=dimension)
+
+    optimizer = BFGS(
+        f_objective=wrapper.f_objective,
+        f_gradient=wrapper.f_gradient,
         dimension=dimension,
-        X=x0,
+        x=x0,
         max_fes=MAX_EVALS,
         min_clamp=globals.def_clamps[0],
         max_clamp=globals.def_clamps[1],
         checkpoints=globals.def_checkpoints
     )
 
-    algo.start()
+    optimizer.start()
+
+    best_x = optimizer.x
 
     result = []
     max_fes = MAX_EVALS
 
     for checkpoint in globals.def_checkpoints:
-        eval_checkpoint = max_fes * checkpoint
-
-        if len(algo.log[checkpoint]) > 0:
-            closest_value = algo.log[checkpoint][-1]
-            checkpoint_x = algo.help_log[checkpoint][-1]
+        if checkpoint in optimizer.log and len(optimizer.log[checkpoint]) > 0:
+            checkpoint_x = optimizer.help_log[checkpoint][-1]
             loss_grad = eval_meth.test_error(checkpoint_x)
 
         else:
-            closest_value = 0
+            loss_grad = 0
 
         result.append({
-            "algorithm": "nlshade",
+            "algorithm": "bfgs",
             "dimension": dimension,
             "run": run_id,
             "checkpoint": checkpoint,
             "error": [loss_grad]
         })
 
-    print(run_id)
+    print("Run:", run_id)
     return result

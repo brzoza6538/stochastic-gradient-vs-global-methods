@@ -1,4 +1,3 @@
-
 import numpy as np
 
 import numpy as np
@@ -14,7 +13,7 @@ import numpy as np
 
 from Net import *
 from sklearn.preprocessing import MinMaxScaler
-from algorithms import NL_SHADE_RSP_MID
+
 
 
 class Evaluation_method():
@@ -40,12 +39,15 @@ class Evaluation_method():
         self.y_train = self.lb.fit_transform(self.y_train)
         self.y_test = self.lb.transform(self.y_test)
 
-        self.fully_connected_layer1 = FullyConnected(input_size=FULL_IRIS, output_size=HID_LAYER_1)
-        self.tanh_layer1 = Tanh()
+
+
+
+        self.fully_connected_layer1 = FullyConnected(input_size=FULL_MNIST, output_size=HID_LAYER_1)
+        self.tanh_layer1 = ReLU()
         self.fully_connected_layer2 = FullyConnected(input_size=HID_LAYER_1, output_size=HID_LAYER_2)
-        self.tanh_layer2 = Tanh()
-        self.fully_connected_layer3 = FullyConnected(input_size=HID_LAYER_2, output_size=IRIS_OUTPUT)
-        self.tanh_layer3 = Tanh()
+        self.tanh_layer2 = ReLU()
+        self.fully_connected_layer3 = FullyConnected(input_size=HID_LAYER_2, output_size=MNIST_OUTPUT)
+        self.tanh_layer3 = Softmax()
 
         self.my_network = Network(layers=[
                                     self.fully_connected_layer1,
@@ -92,7 +94,7 @@ class Evaluation_method():
 
         for x_i, y_true in zip(self.x_train[ l :  l + BATCH_SIZE], self.y_train[ l : l + BATCH_SIZE]):
             #x = x.reshape(1, -1)
-            y_pred = np.maximum(self.my_network(x_i), 0)
+            y_pred = self.my_network(x_i)
 
             current_loss = self.my_loss.calculate_loss(y_true, y_pred)
             train_loss += np.mean(current_loss)
@@ -148,6 +150,7 @@ class Evaluation_method():
         return accuracy
     
 
+
     def test_error(self, x):
         # Y = self.objective_f.evaluate(x)
         # error = abs(Y - self.global_min)
@@ -179,11 +182,13 @@ class Evaluation_method():
 
         for x_i, y_true in zip(self.x_train[ l :  l + BATCH_SIZE], self.y_train[ l : l + BATCH_SIZE]):
             #x = x.reshape(1, -1)
-            y_pred = np.maximum(self.my_network(x_i), 0)
+            y_pred = self.my_network(x_i)
 
+            # Calculate loss (you might want to use the proper loss function here)
             current_loss = self.my_loss.calculate_loss(y_true, y_pred)
             train_loss += np.mean(current_loss)
 
+            # Check if the prediction is correct
             predicted_label = np.argmax(y_pred)
             true_label = np.argmax(y_true)
             correct_predictions += (predicted_label == true_label)
@@ -197,60 +202,67 @@ class Evaluation_method():
         # return (1 - accuracy), BATCH_SIZE
         return (train_loss/BATCH_SIZE)
 
+##############
 
 
 
 
+def run_cmaes_net(run_id, images, labels, seed=None):
 
-
-def run_nlshade_net(run_id, images, labels, seed=None):
-
-    seed = seed or int((time.time() * 1000) + run_id)
+    seed = seed or int((time.time() * 1000) + run_id)  # Generujemy nasiono na podstawie czasu i run_id
     seed = seed % (2**32)
 
-    dimension = ((FULL_IRIS + 1)*HID_LAYER_1 +
-                 (HID_LAYER_1 + 1)*HID_LAYER_2 +
-                 (HID_LAYER_2 + 1)*IRIS_OUTPUT)
-
-    pop_size = dimension * 5
-    x0 = np.random.uniform(CLAMPS[0], CLAMPS[1], size=(pop_size, dimension))
-
+    dimension = ((FULL_MNIST + 1)*HID_LAYER_1 + (HID_LAYER_1 + 1)*HID_LAYER_2 + (HID_LAYER_2 + 1)*MNIST_OUTPUT)
+    x0 = np.random.uniform(CLAMPS[0], CLAMPS[1], size=dimension)
+    # switch_interval = 1
+    popsize = int(4 + np.floor(3 * np.log(dimension)))
     eval_meth = Evaluation_method(seed, images, labels)
-    f_eval = eval_meth.evaluate
+    f_eval = Eval_wrapper(eval_meth.evaluate)
 
-    algo = NL_SHADE_RSP_MID(
-        f_objective=f_eval,
-        dimension=dimension,
-        X=x0,
-        max_fes=MAX_EVALS,
-        min_clamp=globals.def_clamps[0],
-        max_clamp=globals.def_clamps[1],
-        checkpoints=globals.def_checkpoints
+
+    data = eswrapper(
+        x=x0,
+        fun=f_eval,
+        popsize=popsize,
+        maxevals=MAX_EVALS,
+        variation=CMAVariation.VANILLA,
+        seed=seed,
+        callback=None,
     )
 
-    algo.start()
-
     result = []
-    max_fes = MAX_EVALS
 
+    max_fes = MAX_EVALS
     for checkpoint in globals.def_checkpoints:
         eval_checkpoint = max_fes * checkpoint
 
-        if len(algo.log[checkpoint]) > 0:
-            closest_value = algo.log[checkpoint][-1]
-            checkpoint_x = algo.help_log[checkpoint][-1]
-            loss_grad = eval_meth.test_error(checkpoint_x)
+        idx = np.abs(np.array(data.nums_evals) - eval_checkpoint).argmin()
 
+
+        closest_checkpoint = data.nums_evals[idx]
+
+        if( abs(data.nums_evals[idx] - eval_checkpoint ) < 50 ):
+            # closest_value = abs(float(curr_f["global_min"]) - data.midpoint_values[idx])
+            print("CHECKPOINT : ", checkpoint)
+            closest_value = eval_meth.test_error(data.best_solutions[idx])
+
+            result.append({
+                "algorithm": 'cmaes',
+                "dimension": dimension,
+                "run": run_id,
+                "checkpoint": checkpoint,
+                "error": [closest_value]
+            })
         else:
             closest_value = 0
-
-        result.append({
-            "algorithm": "nlshade",
-            "dimension": dimension,
-            "run": run_id,
-            "checkpoint": checkpoint,
-            "error": [loss_grad]
-        })
+            result.append({
+                "algorithm": 'cmaes',
+                "dimension": dimension,
+                "run": run_id,
+                "checkpoint": checkpoint,
+                "error": [closest_value]
+            })
 
     print(run_id)
     return result
+
