@@ -5,8 +5,8 @@
 #SBATCH --mem=1GB
 #SBATCH --time=24:00:00
 #SBATCH -p plgrid
-#SBATCH --output="networks_iris/Adam/adam_output.log"
-#SBATCH --error="networks_iris/Adam/adam_error.log"
+#SBATCH --output="networks_mnist/Adam/adam_output.log"
+#SBATCH --error="networks_mnist/Adam/adam_error.log"
 
 
 
@@ -15,5 +15,5 @@ BASE_DIR=~/$(basename $SLURM_SUBMIT_DIR)
 cd $SLURM_SUBMIT_DIR
 source $BASE_DIR/.venv/bin/activate
 export PYTHONPATH=$PYTHONPATH:$BASE_DIR
-cd networks_iris/Adam
+cd networks_mnist/Adam
 python3 Adam_script.py

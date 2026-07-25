@@ -1,2 +1,0 @@
-<algorithms.pycma_cmaes.Eval_wrapper object at 0x7f2cc65b2c88>,0,[ 0.51939731  0.68179398 -0.2934709  ...  0.31729204 -0.12820413
-  0.73397537],CMAVariation.VANILLA,matmul: Input operand 1 has a mismatch in its core dimension 0, with gufunc signature (n?,k),(k,m?)->(n?,m?) (size 784 is different from 4)
