@@ -58,9 +58,8 @@ class FullyConnected(Layer):
         super().__init__()
         self.input_size = input_size
         self.output_size = output_size
-        self.weights = np.random.uniform(-weight_range, weight_range, (input_size, output_size))
-        self.bias = np.random.uniform(-weight_range, weight_range, (1, output_size))
-
+        self.weights = np.random.randn(input_size, output_size) * np.sqrt(2.0 / input_size)
+        self.bias = np.zeros((1, output_size))
 
         self.weights_derivative = np.zeros((input_size, output_size))
         self.bias_derivative = np.zeros((1, output_size))
@@ -99,8 +98,41 @@ class Tanh(Layer):
         help = (1 - np.tanh(self.inputs)**2) * output_error_derivative
 
         return (help)
+    
+class ReLU(Layer):
+    def __init__(self) -> None:
+        super().__init__()
+        self.inputs = None
 
+    def forward(self, x: np.ndarray) -> np.ndarray:
+        self.inputs = x
+        return np.maximum(0, x)
 
+    def backward(self, output_error_derivative: np.ndarray) -> np.ndarray:
+        return (self.inputs > 0).astype(float) * output_error_derivative
+
+class Softmax(Layer):
+    def __init__(self) -> None:
+        super().__init__()
+        self.outputs = None
+
+    def forward(self, x: np.ndarray) -> np.ndarray:
+        shifted = x - np.max(x, axis=-1, keepdims=True)
+        exp = np.exp(shifted)
+        self.outputs = exp / np.sum(exp, axis=-1, keepdims=True)
+        return self.outputs
+
+    def backward(self, output_error_derivative: np.ndarray) -> np.ndarray:
+        input_gradient = np.empty_like(output_error_derivative)
+
+        for i, (y, grad) in enumerate(zip(self.outputs, output_error_derivative)):
+            y = y.reshape(-1, 1)
+            jacobian = np.diagflat(y) - y @ y.T
+            input_gradient[i] = jacobian @ grad
+
+        return input_gradient
+
+    
 class Loss:
     def __init__(self, loss_function: callable, loss_function_derivative: callable) -> None:
         self.loss_function = loss_function
@@ -257,14 +289,14 @@ class Network:
 
 
 class EmbedLayer(Layer):
-    def __init__(self, input_size: int, output_size: int, weight_range=0.01) -> None:
+    def __init__(self, input_size, output_size):
         super().__init__()
-        self.input_size = input_size
-        self.output_size = output_size
 
-        self.weights = np.random.uniform(-weight_range, weight_range, (input_size, output_size))
-        self.bias = np.random.uniform(-weight_range, weight_range, (1, output_size))
-
+        self.weights = (
+            np.random.randn(input_size, output_size)
+            / np.sqrt(output_size)
+        )
+        self.bias = np.zeros((1, output_size))
         self.inputs = None
 
     def forward(self, x: np.ndarray) -> np.ndarray:

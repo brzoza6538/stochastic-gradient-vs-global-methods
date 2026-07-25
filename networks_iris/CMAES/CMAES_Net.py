@@ -213,7 +213,7 @@ def run_cmaes_net(run_id, images, labels, seed=None):
     seed = seed % (2**32)
 
     dimension = ((FULL_IRIS + 1)*HID_LAYER_1 + (HID_LAYER_1 + 1)*HID_LAYER_2 + (HID_LAYER_2 + 1)*IRIS_OUTPUT)
-    x0 = np.random.uniform(CLAMPS[0], CLAMPS[1], size=dimension)
+    x0 = np.random.normal(CLAMPS[0], CLAMPS[1], size=dimension)
     # switch_interval = 1
     popsize = int(4 + np.floor(3 * np.log(dimension)))
     eval_meth = Evaluation_method(seed, images, labels)

@@ -259,7 +259,7 @@ def run_bfgs_net(run_id, images, labels, seed=None):
         (HID_LAYER_2 + 1) * IRIS_OUTPUT
     )
 
-    x0 = np.random.uniform(CLAMPS[0], CLAMPS[1], size=dimension)
+    x0 = np.random.normal(CLAMPS[0], CLAMPS[1], size=dimension)
 
     optimizer = BFGS(
         f_objective=wrapper.f_objective,
