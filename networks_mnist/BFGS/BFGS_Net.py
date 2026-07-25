@@ -41,15 +41,17 @@ class Evaluation_method():
 
 
 
+        self.E_layer = EmbedLayer(input_size=FULL_MNIST, output_size=INPUT)
+        self.tanh_layer0 = ReLU()
 
-        self.fully_connected_layer1 = FullyConnected(input_size=FULL_MNIST, output_size=HID_LAYER_1)
-        self.tanh_layer1 = Tanh()
+        self.fully_connected_layer1 = FullyConnected(input_size=INPUT, output_size=HID_LAYER_1)
+        self.tanh_layer1 = ReLU()
         self.fully_connected_layer2 = FullyConnected(input_size=HID_LAYER_1, output_size=HID_LAYER_2)
-        self.tanh_layer2 = Tanh()
+        self.tanh_layer2 = ReLU()
         self.fully_connected_layer3 = FullyConnected(input_size=HID_LAYER_2, output_size=MNIST_OUTPUT)
-        self.tanh_layer3 = Tanh()
+        self.tanh_layer3 = Softmax()
 
-        self.my_network = Network(layers=[
+        self.my_network = Network(layers=[self.E_layer, self.tanh_layer0,
                                     self.fully_connected_layer1,
                                     self.tanh_layer1, self.fully_connected_layer2,
                                     self.tanh_layer2, self.fully_connected_layer3,
@@ -254,12 +256,12 @@ def run_bfgs_net(run_id, images, labels, seed=None):
     wrapper = BFGSObjectiveWrapper(eval_meth)
 
     dimension = (
-        (FULL_MNIST + 1) * HID_LAYER_1 +
+        (INPUT + 1) * HID_LAYER_1 +
         (HID_LAYER_1 + 1) * HID_LAYER_2 +
         (HID_LAYER_2 + 1) * MNIST_OUTPUT
     )
 
-    x0 = np.random.uniform(CLAMPS[0], CLAMPS[1], size=dimension)
+    x0 = np.random.normal(CLAMPS[0], CLAMPS[1], size=dimension)
 
     optimizer = BFGS(
         f_objective=wrapper.f_objective,

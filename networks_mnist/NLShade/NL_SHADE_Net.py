@@ -40,14 +40,17 @@ class Evaluation_method():
         self.y_train = self.lb.fit_transform(self.y_train)
         self.y_test = self.lb.transform(self.y_test)
 
-        self.fully_connected_layer1 = FullyConnected(input_size=FULL_MNIST, output_size=HID_LAYER_1)
+        self.E_layer = EmbedLayer(input_size=FULL_MNIST, output_size=INPUT)
+        self.tanh_layer0 = ReLU()
+
+        self.fully_connected_layer1 = FullyConnected(input_size=INPUT, output_size=HID_LAYER_1)
         self.tanh_layer1 = ReLU()
         self.fully_connected_layer2 = FullyConnected(input_size=HID_LAYER_1, output_size=HID_LAYER_2)
         self.tanh_layer2 = ReLU()
         self.fully_connected_layer3 = FullyConnected(input_size=HID_LAYER_2, output_size=MNIST_OUTPUT)
         self.tanh_layer3 = Softmax()
 
-        self.my_network = Network(layers=[
+        self.my_network = Network(layers=[self.E_layer, self.tanh_layer0,
                                     self.fully_connected_layer1,
                                     self.tanh_layer1, self.fully_connected_layer2,
                                     self.tanh_layer2, self.fully_connected_layer3,
@@ -208,12 +211,12 @@ def run_nlshade_net(run_id, images, labels, seed=None):
     seed = seed or int((time.time() * 1000) + run_id)
     seed = seed % (2**32)
 
-    dimension = ((FULL_MNIST + 1)*HID_LAYER_1 +
+    dimension = ((INPUT + 1)*HID_LAYER_1 +
                  (HID_LAYER_1 + 1)*HID_LAYER_2 +
                  (HID_LAYER_2 + 1)*MNIST_OUTPUT)
 
     pop_size = dimension * 5
-    x0 = np.random.uniform(CLAMPS[0], CLAMPS[1], size=(pop_size, dimension))
+    x0 = np.random.normal(CLAMPS[0], CLAMPS[1], size=(pop_size, dimension))
 
     eval_meth = Evaluation_method(seed, images, labels)
     f_eval = eval_meth.evaluate

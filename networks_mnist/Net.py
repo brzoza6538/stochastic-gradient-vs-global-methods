@@ -6,38 +6,24 @@ from abc import ABC, abstractmethod
 from typing import List
 from algorithms import globals
 
-# # FULL_MNIST = 784
 # FULL_MNIST = 784
+FULL_MNIST = 784
 
-# INPUT = 200
-# HID_LAYER_1 = 16
-# HID_LAYER_2 = 16
-
-# # OUTPUT = 10
-# MNIST_OUTPUT = 10
-
-# BATCH_SIZE = 56000
-
-# MAX_EVALS = 10000 * 3658 
-
-# CLAMPS = [-1, 1]
-
-
-# FULL_MNIST = 784
-FULL_MNIST = 4
-
-# INPUT = 200
-HID_LAYER_1 = 3
-HID_LAYER_2 = 3
+INPUT = 200
+HID_LAYER_1 = 16
+HID_LAYER_2 = 16
 
 # OUTPUT = 10
-MNIST_OUTPUT = 3
+MNIST_OUTPUT = 10
 
-BATCH_SIZE = 120
+BATCH_SIZE = 56000
 
-MAX_EVALS = 100000
+MAX_EVALS = 10000 * 3658 
 
 CLAMPS = [-1, 1]
+
+
+
 
 
 
@@ -73,9 +59,8 @@ class FullyConnected(Layer):
         super().__init__()
         self.input_size = input_size
         self.output_size = output_size
-        self.weights = np.random.uniform(-weight_range, weight_range, (input_size, output_size))
-        self.bias = np.random.uniform(-weight_range, weight_range, (1, output_size))
-
+        self.weights = np.random.randn(input_size, output_size) * np.sqrt(2.0 / input_size)
+        self.bias = np.zeros((1, output_size))
 
         self.weights_derivative = np.zeros((input_size, output_size))
         self.bias_derivative = np.zeros((1, output_size))
@@ -305,14 +290,14 @@ class Network:
 
 
 class EmbedLayer(Layer):
-    def __init__(self, input_size: int, output_size: int, weight_range=0.01) -> None:
+    def __init__(self, input_size, output_size):
         super().__init__()
-        self.input_size = input_size
-        self.output_size = output_size
 
-        self.weights = np.random.uniform(-weight_range, weight_range, (input_size, output_size))
-        self.bias = np.random.uniform(-weight_range, weight_range, (1, output_size))
-
+        self.weights = (
+            np.random.randn(input_size, output_size)
+            / np.sqrt(output_size)
+        )
+        self.bias = np.zeros((1, output_size))
         self.inputs = None
 
     def forward(self, x: np.ndarray) -> np.ndarray:

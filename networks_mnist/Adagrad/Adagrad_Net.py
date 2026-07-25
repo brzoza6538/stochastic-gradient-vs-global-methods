@@ -158,14 +158,16 @@ def run_adagrad_net(run_id, images, labels,  seed=None):
     y_test = lb.transform(y_test)
 
 
-    fully_connected_layer1 = FullyConnected(input_size=FULL_MNIST, output_size=HID_LAYER_1)
-    tanh_layer1 = Tanh()
+    E_layer = EmbedLayer(input_size=FULL_MNIST, output_size=INPUT)
+    tanh_layer0 = ReLU()
+    fully_connected_layer1 = FullyConnected(input_size=INPUT, output_size=HID_LAYER_1)
+    tanh_layer1 = ReLU()
     fully_connected_layer2 = FullyConnected(input_size=HID_LAYER_1, output_size=HID_LAYER_2)
-    tanh_layer2 = Tanh()
+    tanh_layer2 = ReLU()
     fully_connected_layer3 = FullyConnected(input_size=HID_LAYER_2, output_size=MNIST_OUTPUT)
-    tanh_layer3 = Tanh()
+    tanh_layer3 = Softmax()
 
-    my_network = AdagradNetwork(layers=[
+    my_network = AdagradNetwork(layers=[E_layer, tanh_layer0,
                                 fully_connected_layer1,
                                 tanh_layer1, fully_connected_layer2,
                                 tanh_layer2, fully_connected_layer3,

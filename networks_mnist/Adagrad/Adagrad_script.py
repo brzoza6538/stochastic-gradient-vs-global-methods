@@ -1,10 +1,10 @@
 
 from comparison import *
 
-from sklearn import datasets
+from sklearn.datasets import fetch_openml
 
-iris = datasets.load_iris()
-
-images, labels = iris.data, iris.target.astype(int)
+mnist = fetch_openml('mnist_784')
+images = mnist.data.to_numpy(dtype=np.float32)
+labels = mnist.target.to_numpy(dtype=np.int64)
 
 gather_data(partial(run_adagrad_net, images=images, labels=labels), "ada_net")

@@ -1,13 +1,13 @@
 from algorithms import *
-from CMAES import *
-from Adam import *
-from Adagrad import *
-from BFGS import *
-from NLShade import *
+from CMAES.CMAES_Net import *
+from Adam.Adam_Net import *
+from Adagrad.Adagrad_Net import *
+from BFGS.BFGS_Net import *
+from NLShade.NL_SHADE_Net import *
 
 from functools import partial
 
-RUNS = 1
+RUNS = 51
 
 def gather_data(algorithm, algo_name):
     records = []
