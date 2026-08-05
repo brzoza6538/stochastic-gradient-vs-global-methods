@@ -186,23 +186,16 @@ class Evaluation_method():
                 layer.bias = snippet
                 pointer += layer.output_size
 
-        train_loss = 0
+        test_loss = 0
         correct_predictions = 0
 
-        if int(self.train_pointer) * BATCH_SIZE > len(self.x_train):
-            self.train_pointer = 0
-
-        l = int(self.train_pointer) * BATCH_SIZE
-
-
-
-        for x_i, y_true in zip(self.x_train[ l :  l + BATCH_SIZE], self.y_train[ l : l + BATCH_SIZE]):
+        for x_i, y_true in zip(self.x_test, self.y_test):
             #x = x.reshape(1, -1)
             y_pred = self.my_network(x_i)
 
             # Calculate loss (you might want to use the proper loss function here)
             current_loss = self.my_loss.calculate_loss(y_true, y_pred)
-            train_loss += np.mean(current_loss)
+            test_loss += np.mean(current_loss)
 
             # Check if the prediction is correct
             predicted_label = np.argmax(y_pred)
@@ -212,11 +205,11 @@ class Evaluation_method():
         accuracy = correct_predictions / BATCH_SIZE
         # self.train_pointer += 1 # HERE
 
-        print("acccc: ", (accuracy), "lossss: ", (train_loss/BATCH_SIZE))
+        print("acccc: ", (accuracy), "lossss: ", (test_loss/BATCH_SIZE))
 
         # Calculate average loss and accuracy
         # return (1 - accuracy), BATCH_SIZE
-        return (((1 - accuracy), (train_loss/BATCH_SIZE)))# HERE - switch acc and loss
+        return (((1 - accuracy), (test_loss/BATCH_SIZE)))# HERE - switch acc and loss
 
 ##############
 
