@@ -1,18 +1,20 @@
 from algorithms import *
-from CMAES import *
-from Adam import *
-from Adagrad import *
-from BFGS import *
-from NLShade import *
+from CMAES.CMAES_Net import *
+from Adam.Adam_Net import *
+from Adagrad.Adagrad_Net import *
+from BFGS.BFGS_Net import *
+from NLShade.NL_SHADE_Net import *
 
 from functools import partial
+import time
 
-RUNS = 1
+RUNS = 25
 
 def gather_data(algorithm, algo_name):
     records = []
     run_records = []
 
+    start = time.time()
 
     # for run_id in range(RUNS):
     #     sublist = algorithm(run_id)   # run_adam_net(...)
@@ -75,3 +77,6 @@ def gather_data(algorithm, algo_name):
         writer.writeheader()
         writer.writerows(run_records)
 
+
+    end = time.time()
+    print("ASDFGHJKL - It took", (end - start), "seconds!")

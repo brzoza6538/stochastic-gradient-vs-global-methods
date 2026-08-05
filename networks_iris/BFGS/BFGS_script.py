@@ -7,4 +7,4 @@ iris = datasets.load_iris()
 
 images, labels = iris.data, iris.target.astype(int)
 
-gather_data(partial(run_bfgs_net, images=images, labels=labels), "bfgs_net")
+gather_data(partial(run_bfgs_net, images=images, labels=labels), "bfgs_net_acloss")

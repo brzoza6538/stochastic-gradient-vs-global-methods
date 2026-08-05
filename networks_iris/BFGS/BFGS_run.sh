@@ -14,6 +14,6 @@ BASE_DIR=~/$(basename $SLURM_SUBMIT_DIR)
 
 cd $SLURM_SUBMIT_DIR
 source $BASE_DIR/.venv/bin/activate
-export PYTHONPATH=$PYTHONPATH:$BASE_DIR
+export PYTHONPATH="${PYTHONPATH}:${BASE_DIR}:${BASE_DIR}/networks_iris"
 cd networks_iris/BFGS
 python3 BFGS_script.py
