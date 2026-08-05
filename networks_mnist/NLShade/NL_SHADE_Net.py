@@ -63,8 +63,12 @@ class Evaluation_method():
         self.my_network.compile(loss=self.my_loss)
         self.train_pointer = 0
 
+        self.wrapper = None
+        self.eval_counter = 0
+        self.batch_idx = None
 
-    def evaluate(self, x):
+
+    def evaluate(self,x):
         # Y = self.objective_f.evaluate(x)
         # error = abs(Y - self.global_min)
         # evaluations_used = 1
@@ -86,14 +90,20 @@ class Evaluation_method():
         train_loss = 0
         correct_predictions = 0
 
-        if int(self.train_pointer) * BATCH_SIZE > len(self.x_train):
-            self.train_pointer = 0
-
-        l = int(self.train_pointer) * BATCH_SIZE
 
 
+        if self.eval_counter == 0:
+            self.batch_idx = np.random.choice(
+                len(self.x_train),
+                min(BATCH_SIZE, len(self.x_train)),
+                replace=False
+            )
+            
+        batch_x = self.x_train[self.batch_idx]
+        batch_y = self.y_train[self.batch_idx]
 
-        for x_i, y_true in zip(self.x_train[ l :  l + BATCH_SIZE], self.y_train[ l : l + BATCH_SIZE]):
+        # for x_i, y_true in zip(self.x_train[ l :  l + BATCH_SIZE], self.y_train[ l : l + BATCH_SIZE]):
+        for x_i, y_true in zip(batch_x, batch_y):
             #x = x.reshape(1, -1)
             y_pred = np.maximum(self.my_network(x_i), 0)
 
@@ -111,8 +121,16 @@ class Evaluation_method():
 
         # Calculate average loss and accuracy
         # return (1 - accuracy), BATCH_SIZE
-        return (train_loss/BATCH_SIZE), BATCH_SIZE
 
+
+        self.eval_counter += 1
+
+        if self.eval_counter >= self.wrapper.pop_size:
+            self.eval_counter = 0
+
+
+
+        return train_loss / len(self.batch_idx), len(self.batch_idx)
 
     def test(self, x):
         # Y = self.objective_f.evaluate(x)
@@ -198,7 +216,7 @@ class Evaluation_method():
 
         # Calculate average loss and accuracy
         # return (1 - accuracy), BATCH_SIZE
-        return (train_loss/BATCH_SIZE)
+        return (((1 - accuracy), (train_loss/BATCH_SIZE))) # HERE - switch acc and loss
 
 
 
@@ -230,7 +248,7 @@ def run_nlshade_net(run_id, images, labels, seed=None):
         max_clamp=globals.def_clamps[1],
         checkpoints=globals.def_checkpoints
     )
-
+    eval_meth.wrapper = algo
     algo.start()
 
     result = []
@@ -242,7 +260,7 @@ def run_nlshade_net(run_id, images, labels, seed=None):
         if len(algo.log[checkpoint]) > 0:
             closest_value = algo.log[checkpoint][-1]
             checkpoint_x = algo.help_log[checkpoint][-1]
-            loss_grad = eval_meth.test_error(checkpoint_x)
+            loss_grad = eval_meth.test_error(checkpoint_x)# HERE - switch acc and loss
 
         else:
             closest_value = 0

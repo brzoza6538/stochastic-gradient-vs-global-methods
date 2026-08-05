@@ -6,12 +6,16 @@ from BFGS.BFGS_Net import *
 from NLShade.NL_SHADE_Net import *
 
 from functools import partial
+import time
 
-RUNS = 51
+
+RUNS = 10 #51
 
 def gather_data(algorithm, algo_name):
     records = []
     run_records = []
+
+    start = time.time()
 
 
     # for run_id in range(RUNS):
@@ -75,3 +79,5 @@ def gather_data(algorithm, algo_name):
         writer.writeheader()
         writer.writerows(run_records)
 
+    end = time.time()
+    print("ASDFGHJKL - It took", (end - start), "seconds!")

@@ -18,7 +18,11 @@ from sklearn.preprocessing import MinMaxScaler
 
 class Evaluation_method():
 
-    def __init__(self, seed, images, labels ):
+    def __init__(self, seed, images, labels, popsize ):
+        self.popsize = popsize
+        self.eval_counter = 0
+        self.batch_idx = None 
+
         self.x_train, self.x_test, self.y_train, self.y_test = train_test_split(images, labels, test_size=0.2, random_state=seed) # TODO = add a  seed that changes every time?
 
         self.x_train = np.array(self.x_train)
@@ -62,7 +66,7 @@ class Evaluation_method():
         self.my_loss = Loss(def_loss,def_derivative_loss)
 
         self.my_network.compile(loss=self.my_loss)
-        self.train_pointer = 0
+        # self.train_pointer = 0 # HERE
 
 
     def evaluate(self, x):
@@ -87,14 +91,24 @@ class Evaluation_method():
         train_loss = 0
         correct_predictions = 0
 
-        if int(self.train_pointer) * BATCH_SIZE > len(self.x_train):
-            self.train_pointer = 0
+        # if self.train_pointer * BATCH_SIZE >= len(self.x_train):
+        #     self.train_pointer = 0
+             
+        # l = int(self.train_pointer) * BATCH_SIZE
+        if self.eval_counter % self.popsize == 0:
+            self.batch_idx = np.random.choice(
+                len(self.x_train),
+                BATCH_SIZE,
+                replace=False
+            )
 
-        l = int(self.train_pointer) * BATCH_SIZE
+        self.eval_counter += 1
 
+        batch_x = self.x_train[self.batch_idx]
+        batch_y = self.y_train[self.batch_idx]
 
-
-        for x_i, y_true in zip(self.x_train[ l :  l + BATCH_SIZE], self.y_train[ l : l + BATCH_SIZE]):
+        # for x_i, y_true in zip(self.x_train[ l :  l + BATCH_SIZE], self.y_train[ l : l + BATCH_SIZE]):
+        for x_i, y_true in zip(batch_x, batch_y):
             #x = x.reshape(1, -1)
             y_pred = self.my_network(x_i)
 
@@ -106,7 +120,7 @@ class Evaluation_method():
             correct_predictions += (predicted_label == true_label)
         
         accuracy = correct_predictions / BATCH_SIZE
-        # self.train_pointer += 0.0001 # HERE
+        # self.train_pointer += 1 # HERE
 
         print("acccc: ", (accuracy), "lossss: ", (train_loss/BATCH_SIZE))
 
@@ -196,13 +210,13 @@ class Evaluation_method():
             correct_predictions += (predicted_label == true_label)
         
         accuracy = correct_predictions / BATCH_SIZE
-        # self.train_pointer += 0.0001 # HERE
+        # self.train_pointer += 1 # HERE
 
         print("acccc: ", (accuracy), "lossss: ", (train_loss/BATCH_SIZE))
 
         # Calculate average loss and accuracy
         # return (1 - accuracy), BATCH_SIZE
-        return (train_loss/BATCH_SIZE)
+        return (((1 - accuracy), (train_loss/BATCH_SIZE)))# HERE - switch acc and loss
 
 ##############
 
@@ -218,7 +232,7 @@ def run_cmaes_net(run_id, images, labels, seed=None):
     x0 = np.random.normal(CLAMPS[0], CLAMPS[1], size=dimension)
     # switch_interval = 1
     popsize = int(4 + np.floor(3 * np.log(dimension)))
-    eval_meth = Evaluation_method(seed, images, labels)
+    eval_meth = Evaluation_method(seed, images, labels, popsize)
     f_eval = Eval_wrapper(eval_meth.evaluate)
 
 
@@ -246,7 +260,7 @@ def run_cmaes_net(run_id, images, labels, seed=None):
         if( abs(data.nums_evals[idx] - eval_checkpoint ) < 50 ):
             # closest_value = abs(float(curr_f["global_min"]) - data.midpoint_values[idx])
             print("CHECKPOINT : ", checkpoint)
-            closest_value = eval_meth.test_error(data.best_solutions[idx])
+            closest_value = eval_meth.test_error(data.best_solutions[idx]) # HERE - switch acc and loss
 
             result.append({
                 "algorithm": 'cmaes',

@@ -16,9 +16,10 @@ HID_LAYER_2 = 16
 # OUTPUT = 10
 MNIST_OUTPUT = 10
 
-BATCH_SIZE = 56000
+BATCH_SIZE = 256 #56000 #128
+POP_SIZE = 700000
 
-MAX_EVALS = 10000 * 3658 
+MAX_EVALS = 10000 * 1000 #3658 
 
 CLAMPS = [-1, 1]
 
@@ -275,7 +276,7 @@ class Network:
                         acc = self.calculate_acc_checkpoint(x_test, y_test)
                         loss_grad = self.calculate_loss_checkpoint(x_test, y_test)
                         print(acc)
-                        self.log[checkpoint].append(loss_grad)
+                        self.log[checkpoint].append(((1 - acc), loss_grad)) # HERE - switch acc and loss
                         self.seen_checkpoints.add(checkpoint)
 
                 # Stop if MAX_EVALS reached

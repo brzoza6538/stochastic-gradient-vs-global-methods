@@ -20,6 +20,9 @@ class Evaluation_method():
     def __init__(self, seed, images, labels ):
         self.x_train, self.x_test, self.y_train, self.y_test = train_test_split(images, labels, test_size=0.2, random_state=seed) # TODO = add a  seed that changes every time?
 
+        self.batch_valid = False
+        self.batch_idx = None
+
         self.x_train = np.array(self.x_train)
         self.x_test = np.array(self.x_test)
         self.y_train = np.array(self.y_train)
@@ -87,16 +90,27 @@ class Evaluation_method():
         train_loss = 0
         correct_predictions = 0
 
-        if int(self.train_pointer) * BATCH_SIZE > len(self.x_train):
-            self.train_pointer = 0
+        # if int(self.train_pointer) * BATCH_SIZE > len(self.x_train):
+        #     self.train_pointer = 0
 
-        l = int(self.train_pointer) * BATCH_SIZE
+        # l = int(self.train_pointer) * BATCH_SIZE
+
+        if not self.batch_valid:
+            self.batch_idx = np.random.choice(
+                len(self.x_train),
+                BATCH_SIZE,
+                replace=False
+            )
+            self.batch_valid = True
+            
+        batch_x = self.x_train[self.batch_idx]
+        batch_y = self.y_train[self.batch_idx]
 
 
-
-        for x_i, y_true in zip(self.x_train[ l :  l + BATCH_SIZE], self.y_train[ l : l + BATCH_SIZE]):
+        # for x_i, y_true in zip(self.x_train[ l :  l + BATCH_SIZE], self.y_train[ l : l + BATCH_SIZE]):
+        for x_i, y_true in zip(batch_x, batch_y):
             #x = x.reshape(1, -1)
-            y_pred = np.maximum(self.my_network(x_i), 0)
+            y_pred = self.my_network(x_i)
 
             current_loss = self.my_loss.calculate_loss(y_true, y_pred)
             train_loss += np.mean(current_loss)
@@ -112,7 +126,7 @@ class Evaluation_method():
 
         # Calculate average loss and accuracy
         # return (1 - accuracy), BATCH_SIZE
-        return (train_loss/BATCH_SIZE), BATCH_SIZE
+        return (train_loss/BATCH_SIZE), BATCH_SIZE # HERE to change metric
 
 
     def test(self, x):
@@ -184,7 +198,7 @@ class Evaluation_method():
 
         for x_i, y_true in zip(self.x_train[ l :  l + BATCH_SIZE], self.y_train[ l : l + BATCH_SIZE]):
             #x = x.reshape(1, -1)
-            y_pred = np.maximum(self.my_network(x_i), 0)
+            y_pred = self.my_network(x_i)
 
             current_loss = self.my_loss.calculate_loss(y_true, y_pred)
             train_loss += np.mean(current_loss)
@@ -199,8 +213,8 @@ class Evaluation_method():
         print("acccc: ", (accuracy), "lossss: ", (train_loss/BATCH_SIZE))
 
         # Calculate average loss and accuracy
-        # return (1 - accuracy), BATCH_SIZE
-        return (train_loss/BATCH_SIZE)
+        return (((1 - accuracy), (train_loss/BATCH_SIZE)))
+        # return (train_loss/BATCH_SIZE) # HERE - switch acc and loss
 
 
 def finite_diff_grad(f, x, eps=1e-5):
@@ -229,7 +243,10 @@ class BFGSObjectiveWrapper:
 
     def f_gradient(self, x):
         grad = finite_diff_grad(lambda v: self.eval_meth.evaluate(v)[0], x)
-        return grad, len(x) * 2
+
+        self.eval_meth.batch_valid = False
+
+        return grad, len(x) + 1
 
 
 def run_bfgs_net(run_id, images, labels, seed=None):
@@ -284,7 +301,7 @@ def run_bfgs_net(run_id, images, labels, seed=None):
     for checkpoint in globals.def_checkpoints:
         if checkpoint in optimizer.log and len(optimizer.log[checkpoint]) > 0:
             checkpoint_x = optimizer.help_log[checkpoint][-1]
-            loss_grad = eval_meth.test_error(checkpoint_x)
+            loss_grad = eval_meth.test_error(checkpoint_x) # HERE - switch acc and loss
 
         else:
             loss_grad = 0

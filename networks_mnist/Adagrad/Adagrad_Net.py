@@ -114,7 +114,7 @@ class AdagradNetwork:
                     if checkpoint not in self.seen_checkpoints and self.counter >= checkpoint_fes:
                         loss_grad = self.calculate_loss_checkpoint(x_test, y_test)
                         acc = self.calculate_acc_checkpoint(x_test, y_test)
-                        self.log[checkpoint].append(loss_grad)
+                        self.log[checkpoint].append(((1-acc), loss_grad)) # HERE - switch acc and loss
                         self.seen_checkpoints.add(checkpoint)
 
                         if verbose:
@@ -172,7 +172,7 @@ def run_adagrad_net(run_id, images, labels,  seed=None):
                                 tanh_layer1, fully_connected_layer2,
                                 tanh_layer2, fully_connected_layer3,
                                 tanh_layer3
-                                ], learning_rate=0.05)
+                                ], learning_rate=0.001)
 
 
     my_loss = Loss(def_loss,def_derivative_loss)
