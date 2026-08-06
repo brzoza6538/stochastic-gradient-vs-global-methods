@@ -8,7 +8,7 @@ from NLShade.NL_SHADE_Net import *
 from functools import partial
 import time
 
-RUNS = 25
+RUNS = 51
 
 def gather_data(algorithm, algo_name):
     records = []
@@ -33,7 +33,8 @@ def gather_data(algorithm, algo_name):
         record[entry["checkpoint"]].append(entry["error"])
 
     for checkpoint in def_checkpoints:
-        errors_at_checkpoint = record[checkpoint]
+        # errors_at_checkpoint = record[checkpoint]
+        errors_at_checkpoint = [x[0][1] for x in record[checkpoint]]
 
         mean = np.mean(errors_at_checkpoint)
         std = np.std(errors_at_checkpoint)

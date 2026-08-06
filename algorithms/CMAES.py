@@ -26,6 +26,8 @@ class CMAES:
         self.checkpoints = checkpoints
 
         self.log = {checkpoint: [] for checkpoint in self.checkpoints}
+        self.sol_log = {checkpoint: [] for checkpoint in self.checkpoints}
+
         self.objective_counter = 0
         self.seen_checkpoints = set()
         self.lamb = lamb or int(4 + np.floor(3 * np.log(self.dimension))) # TODO check lamd = 4m
@@ -56,6 +58,8 @@ class CMAES:
         self.chiN = np.sqrt(self.dimension) * (1 - 1/(4*self.dimension) + 1/(21*self.dimension**2))
 
         self.error = None
+        self.best_error = np.inf
+        self.best_solution = None
 
     def start(self):
         while (self.objective_counter < self.objective_limit) and (self.error is None or self.error > self.smallest_val):
@@ -107,15 +111,23 @@ class CMAES:
             self.D = np.sqrt(np.maximum(D_matrix, self.smallest_val))
 
         self.error = fitness[0]
+        if self.error < self.best_error:
+            self.best_error = self.error
+            self.best_solution = offspring[0].copy()
 
-    def collect_data(self): # TODO error dodawany jako lista
+    def collect_data(self):
+
         for checkpoint in self.checkpoints:
+
             checkpoint_fes = int(checkpoint * self.objective_limit)
-            if self.error < self.smallest_val and self.objective_counter <= checkpoint_fes:
-                self.log[checkpoint].append(0)
+
             if checkpoint not in self.seen_checkpoints and self.objective_counter >= checkpoint_fes:
-                self.log[checkpoint].append(0 if self.error < self.smallest_val else self.error)
+
+                self.log[checkpoint].append(self.best_error)
+                self.sol_log[checkpoint].append(self.best_solution.copy())
+
                 self.seen_checkpoints.add(checkpoint)
 
 
-        # TODO mówił że sigma ma być plus minus jeden - sprawdźczy co i jak
+
+                

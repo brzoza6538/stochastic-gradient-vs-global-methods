@@ -125,8 +125,12 @@ class BFGS():
         self.objective_counter = 0
         self.error = None
 
+
+        self.best_error = np.inf
+        self.best_x = None
+
         if objective_limit is None:
-            self.objective_limit = self.dimension * self.max_fes
+            self.objective_limit = self.max_fes
         else:
             self.objective_limit = objective_limit
 
@@ -153,11 +157,8 @@ class BFGS():
     #     return error
 
 
-
     def wrapped_f_objective(self, x):
         x_proj = self.project_x(x)
-
-        self.x = x_proj.copy()
 
         if self.objective_counter >= self.objective_limit:
             raise StopIteration("Objective limit reached.")
@@ -167,9 +168,14 @@ class BFGS():
         self.objective_counter += evals
         self.error = error
 
+        if error < self.best_error:
+            self.best_error = error
+            self.best_x = x_proj.copy()
+
         self.collect_data()
 
         return error
+
 
 
     def wrapped_grad(self, x):
@@ -178,12 +184,17 @@ class BFGS():
         grad, evals = self.f_gradient(x_proj)
 
         self.objective_counter += evals
+
+        self.collect_data()
+
         return grad
 
-
     def start(self):
+        result = None
+
         try:
             bounds = [(self.min_clamp, self.max_clamp)] * self.dimension
+
             result = minimize(
                 self.wrapped_f_objective,
                 self.x,
@@ -194,17 +205,33 @@ class BFGS():
                     'maxiter': self.objective_limit,
                     'disp': False
                 },
-            )            
-            self.x = result.x
-            self.error = result.fun
+            )
 
         except StopIteration:
             pass
 
+
+        if self.best_x is not None:
+            self.x = self.best_x.copy()
+            self.error = self.best_error
+
+        elif result is not None:
+            self.x = result.x
+            self.error = result.fun
+
+
+        # dopisz brakujące checkpointy
         for checkpoint in self.checkpoints:
-            if self.log[checkpoint] == []:
-                self.log[checkpoint].append(0 if self.error < self.smallest_val else self.error)
-                self.help_log[checkpoint].append(self.x.copy())
+            if checkpoint not in self.seen_checkpoints:
+                self.log[checkpoint].append(
+                    0 if self.best_error < self.smallest_val else self.best_error
+                )
+
+                if self.best_x is not None:
+                    self.help_log[checkpoint].append(self.best_x.copy())
+
+                self.seen_checkpoints.add(checkpoint)
+
 
 
 
@@ -220,18 +247,25 @@ class BFGS():
     def collect_data(self):
         for checkpoint in self.checkpoints:
 
+            if checkpoint in self.seen_checkpoints:
+                continue
+
             checkpoint_fes = int(checkpoint * self.objective_limit)
 
-            if (
-                checkpoint not in self.seen_checkpoints
-                and self.objective_counter >= checkpoint_fes
-            ):
-                self.log[checkpoint].append(0 if self.error < self.smallest_val else self.error)
-                self.help_log[checkpoint].append(self.x.copy())
+            if self.objective_counter >= checkpoint_fes:
 
+                self.log[checkpoint].append(
+                    0 if self.best_error < self.smallest_val else self.best_error
+                )
 
+                if self.best_x is not None:
+                    self.help_log[checkpoint].append(
+                        self.best_x.copy()
+                    )
 
                 self.seen_checkpoints.add(checkpoint)
+
+
 
     def return_epoch_log(self):
         return self.objective_counter, self.error

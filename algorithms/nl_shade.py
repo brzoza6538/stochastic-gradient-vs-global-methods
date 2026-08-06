@@ -282,7 +282,7 @@ class NL_SHADE_RSP_MID():
             loop += 1
             end = self.step()
             self.collect_data()
-
+        self.collect_data(end=True)
             # if loop % 20 == 0:
             #     print("--------------------")
             #     print(f"loop {loop}  Cr : ", self.Cr_memory)
@@ -526,7 +526,7 @@ class NL_SHADE_RSP_MID():
                         bestCandFit = fit_mean
                     if self.global_best_fit is None or fit_mean < self.global_best_fit:
                         self.global_best_fit = fit_mean
-                        self.final_best_sol = copy.deepcopy(self.mean_indiv)
+                        self.global_best_sol = copy.deepcopy(self.mean_indiv)
             else:
                 # fallback: średnia populacji
                 self.mean_indiv = np.mean(pop_tmp, axis=0)
@@ -537,7 +537,7 @@ class NL_SHADE_RSP_MID():
                 self.objective_counter += evals_used
                 if self.global_best_fit is None or fit_mean < self.global_best_fit:
                     self.global_best_fit = fit_mean
-                    self.final_best_sol = copy.deepcopy(self.mean_indiv)
+                    self.global_best_sol = copy.deepcopy(self.mean_indiv)
 
             chosen_indx = np.argmin(np.linalg.norm(pop_tmp - self.mean_indiv, axis=1))
             if fit_mean < fit_tmp[chosen_indx]:

@@ -102,7 +102,7 @@ class Evaluation_method():
         # for x_i, y_true in zip(self.x_train[ l :  l + BATCH_SIZE], self.y_train[ l : l + BATCH_SIZE]):
         for x_i, y_true in zip(batch_x, batch_y):
             #x = x.reshape(1, -1)
-            y_pred = np.maximum(self.my_network(x_i), 0)
+            y_pred = self.my_network(x_i)
 
             current_loss = self.my_loss.calculate_loss(y_true, y_pred)
             train_loss += np.mean(current_loss)
@@ -111,7 +111,7 @@ class Evaluation_method():
             true_label = np.argmax(y_true)
             correct_predictions += (predicted_label == true_label)
         
-        accuracy = correct_predictions / BATCH_SIZE
+        accuracy = correct_predictions / len(self.batch_idx)
         # self.train_pointer += 0.0001 # HERE
 
         print("acccc: ", (accuracy), "lossss: ", (train_loss/len(self.batch_idx)))
@@ -192,7 +192,7 @@ class Evaluation_method():
 
         for x_i, y_true in zip(self.x_test, self.y_test):
             #x = x.reshape(1, -1)
-            y_pred = np.maximum(self.my_network(x_i), 0)
+            y_pred = self.my_network(x_i)
 
             current_loss = self.my_loss.calculate_loss(y_true, y_pred)
             test_loss += np.mean(current_loss)
@@ -201,14 +201,14 @@ class Evaluation_method():
             true_label = np.argmax(y_true)
             correct_predictions += (predicted_label == true_label)
         
-        accuracy = correct_predictions / BATCH_SIZE
+        accuracy = correct_predictions / len(self.x_test)
         # self.test_pointer += 0.0001 # HERE
 
-        print("acccc: ", (accuracy), "lossss: ", (test_loss/BATCH_SIZE))
+        print("acccc: ", (accuracy), "lossss: ", (test_loss/len(self.x_test)))
 
         # Calculate average loss and accuracy
         # return (1 - accuracy), BATCH_SIZE
-        return (((1 - accuracy), (test_loss/BATCH_SIZE))) # HERE - switch acc and loss
+        return (((1 - accuracy), (test_loss/len(self.x_test)))) # HERE - switch acc and loss
 
 
 
@@ -252,18 +252,24 @@ def run_nlshade_net(run_id, images, labels, seed=None):
         if len(algo.log[checkpoint]) > 0:
             closest_value = algo.log[checkpoint][-1]
             checkpoint_x = algo.help_log[checkpoint][-1]
-            loss_grad = eval_meth.test_error(checkpoint_x)# HERE - switch acc and loss
+            loss_grad = eval_meth.test_error(checkpoint_x)
+
+            result.append({
+                "algorithm": "nlshade",
+                "dimension": dimension,
+                "run": run_id,
+                "checkpoint": checkpoint,
+                "error": [loss_grad]
+            })
 
         else:
-            closest_value = 0
-
-        result.append({
-            "algorithm": "nlshade",
-            "dimension": dimension,
-            "run": run_id,
-            "checkpoint": checkpoint,
-            "error": [loss_grad]
-        })
+            result.append({
+                "algorithm": "nlshade",
+                "dimension": dimension,
+                "run": run_id,
+                "checkpoint": checkpoint,
+                "error": [(None, None)]#result[-1]["error"]]
+            })
 
     print(run_id)
     return result

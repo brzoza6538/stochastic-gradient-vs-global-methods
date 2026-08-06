@@ -117,14 +117,13 @@ class Evaluation_method():
             true_label = np.argmax(y_true)
             correct_predictions += (predicted_label == true_label)
         
-        accuracy = correct_predictions / BATCH_SIZE
-        # self.train_pointer += 1 # HERE
+        accuracy = correct_predictions / len(self.batch_idx)
 
-        print("acccc: ", (accuracy), "lossss: ", (train_loss/BATCH_SIZE))
+        print("acccc: ", (accuracy), "lossss: ", (train_loss/len(self.batch_idx))) # HERE learn by acc-loss
 
         # Calculate average loss and accuracy
-        # return (1 - accuracy), BATCH_SIZE
-        return (train_loss/BATCH_SIZE), BATCH_SIZE
+        # return (1 - accuracy), len(self.batch_idx)
+        return (train_loss/len(self.batch_idx)), len(self.batch_idx)
 
 
     def test(self, x):
@@ -204,14 +203,14 @@ class Evaluation_method():
             true_label = np.argmax(y_true)
             correct_predictions += (predicted_label == true_label)
         
-        accuracy = correct_predictions / BATCH_SIZE
+        accuracy = correct_predictions / len(self.x_test)
         # self.train_pointer += 1 # HERE
 
-        print("acccc: ", (accuracy), "lossss: ", (test_loss/BATCH_SIZE))
+        print("acccc: ", (accuracy), "lossss: ", (test_loss/len(self.x_test)))
 
         # Calculate average loss and accuracy
         # return (1 - accuracy), BATCH_SIZE
-        return (((1 - accuracy), (test_loss/BATCH_SIZE)))# HERE - switch acc and loss
+        return (((1 - accuracy), (test_loss/len(self.x_test))))# HERE - switch acc and loss
 
 ##############
 
@@ -246,36 +245,27 @@ def run_cmaes_net(run_id, images, labels, seed=None):
     result = []
 
     max_fes = MAX_EVALS
+
     for checkpoint in globals.def_checkpoints:
-        eval_checkpoint = max_fes * checkpoint
 
-        idx = np.abs(np.array(data.nums_evals) - eval_checkpoint).argmin()
+        print("CHECKPOINT :", checkpoint)
 
 
-        closest_checkpoint = data.nums_evals[idx]
 
-        if( abs(data.nums_evals[idx] - eval_checkpoint ) < 50 ):
-            # closest_value = abs(float(curr_f["global_min"]) - data.midpoint_values[idx])
-            print("CHECKPOINT : ", checkpoint)
-            closest_value = eval_meth.test_error(data.best_solutions[idx]) # HERE - switch acc and loss
+        idx_end = max(1, int(len(data.best_values) * checkpoint))
 
-            result.append({
-                "algorithm": 'cmaes',
-                "dimension": dimension,
-                "run": run_id,
-                "checkpoint": checkpoint,
-                "error": [closest_value]
-            })
-        else:
-            closest_value = 0
-            result.append({
-                "algorithm": 'cmaes',
-                "dimension": dimension,
-                "run": run_id,
-                "checkpoint": checkpoint,
-                "error": [closest_value]
-            })
+        sol_data = data.best_solutions[np.argmin(data.best_values[:idx_end])]
 
+
+        test_result = eval_meth.test_error(sol_data)
+
+        result.append({
+            "algorithm": "cmaes",
+            "dimension": dimension,
+            "run": run_id,
+            "checkpoint": checkpoint,
+            "error": [test_result]
+        })    
     print(run_id)
     return result
 
