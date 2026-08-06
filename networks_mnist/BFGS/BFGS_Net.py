@@ -119,14 +119,14 @@ class Evaluation_method():
             true_label = np.argmax(y_true)
             correct_predictions += (predicted_label == true_label)
         
-        accuracy = correct_predictions / BATCH_SIZE
-        # self.train_pointer += 0.0001 # HERE
+        accuracy = correct_predictions / len(self.batch_idx)
 
-        print("acccc: ", (accuracy), "lossss: ", (train_loss/BATCH_SIZE))
+        print("acccc: ", (accuracy), "lossss: ", (train_loss/len(self.batch_idx)))
 
         # Calculate average loss and accuracy
-        # return (1 - accuracy), BATCH_SIZE
-        return (train_loss/BATCH_SIZE), BATCH_SIZE # HERE to change metric
+        return (1 - accuracy), len(self.batch_idx) # HERE learn by acc-loss
+
+        # return train_loss / len(self.batch_idx), len(self.batch_idx)
 
 
     def test(self, x):
@@ -189,6 +189,7 @@ class Evaluation_method():
         test_loss = 0
         correct_predictions = 0
 
+
         for x_i, y_true in zip(self.x_test, self.y_test):
             #x = x.reshape(1, -1)
             y_pred = self.my_network(x_i)
@@ -200,14 +201,12 @@ class Evaluation_method():
             true_label = np.argmax(y_true)
             correct_predictions += (predicted_label == true_label)
         
-        accuracy = correct_predictions / BATCH_SIZE
-        # self.test_pointer += 0.0001 # HERE
+        accuracy = correct_predictions / len(self.x_test)
 
-        print("acccc: ", (accuracy), "lossss: ", (test_loss/BATCH_SIZE))
+        print("acccc: ", (accuracy), "lossss: ", (test_loss/(len(self.x_test))))
 
         # Calculate average loss and accuracy
-        return (((1 - accuracy), (test_loss/BATCH_SIZE)))
-        # return (test_loss/BATCH_SIZE) # HERE - switch acc and loss
+        return (((1 - accuracy), (test_loss/len(self.x_test))))
 
 
 def finite_diff_grad(f, x, eps=1e-5):

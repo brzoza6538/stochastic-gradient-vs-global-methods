@@ -8,15 +8,13 @@ from NLShade.NL_SHADE_Net import *
 from functools import partial
 import time
 
-
-RUNS = 10 #51
+RUNS = 51
 
 def gather_data(algorithm, algo_name):
     records = []
     run_records = []
 
     start = time.time()
-
 
     # for run_id in range(RUNS):
     #     sublist = algorithm(run_id)   # run_adam_net(...)
@@ -35,7 +33,8 @@ def gather_data(algorithm, algo_name):
         record[entry["checkpoint"]].append(entry["error"])
 
     for checkpoint in def_checkpoints:
-        errors_at_checkpoint = record[checkpoint]
+        # errors_at_checkpoint = record[checkpoint]
+        errors_at_checkpoint = [x[0][1] for x in record[checkpoint]]
 
         mean = np.mean(errors_at_checkpoint)
         std = np.std(errors_at_checkpoint)
@@ -78,6 +77,7 @@ def gather_data(algorithm, algo_name):
         writer = csv.DictWriter(file, fieldnames=run_keys)
         writer.writeheader()
         writer.writerows(run_records)
+
 
     end = time.time()
     print("ASDFGHJKL - It took", (end - start), "seconds!")
