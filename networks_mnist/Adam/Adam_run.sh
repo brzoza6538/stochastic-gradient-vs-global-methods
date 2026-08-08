@@ -5,8 +5,8 @@
 #SBATCH --mem=1GB
 #SBATCH --time=24:00:00
 #SBATCH -p plgrid
-#SBATCH --output="networks_mnist/Adam/adam_output_acloss_batched.log"
-#SBATCH --error="networks_mnist/Adam/adam_error_acloss_batched.log"
+#SBATCH --output="networks_mnist/Adam/adam_output.log"
+#SBATCH --error="networks_mnist/Adam/adam_error.log"
 
 
 

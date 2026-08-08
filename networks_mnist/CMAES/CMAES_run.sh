@@ -5,8 +5,8 @@
 #SBATCH --mem=15GB
 #SBATCH --time=48:00:00
 #SBATCH -p plgrid
-#SBATCH --output="networks_mnist/CMAES/CMAES_output_acloss_batched.log"
-#SBATCH --error="networks_mnist/CMAES/CMAES_error_acloss_batched.log"
+#SBATCH --output="networks_mnist/CMAES/CMAES_output.log"
+#SBATCH --error="networks_mnist/CMAES/CMAES_error.log"
 
 
 

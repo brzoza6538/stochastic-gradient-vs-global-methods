@@ -5,8 +5,8 @@
 #SBATCH --mem=15GB
 #SBATCH --time=48:00:00
 #SBATCH -p plgrid
-#SBATCH --output="networks_mnist/NLShade/NLShade_output_acloss_batched.log"
-#SBATCH --error="networks_mnist/NLShade/NLShade_error_acloss_batched.log"
+#SBATCH --output="networks_mnist/NLShade/NLShade_output.log"
+#SBATCH --error="networks_mnist/NLShade/NLShade_error.log"
 
 
 
