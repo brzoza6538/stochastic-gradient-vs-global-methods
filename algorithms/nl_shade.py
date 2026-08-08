@@ -11,7 +11,7 @@ F_INIT = 0.2
 CR_INIT = 0.2
 RETRIES = 25
 RESAMPLING = True
-MAX_NUM_OF_TRIALS = 100
+MAX_NUM_OF_TRIALS = 20
 NUM_OF_TR_WITHOUT_F_HANGE = 10
 
 COUNT_LIMITS = True
@@ -162,7 +162,7 @@ class NL_SHADE_RSP_MID():
                 # print("--------------------")
                 # print(f"chkpnt{checkpoint}  F : ", self.F_memory)
                 # print("--------------------")
-                print(f"chpt {checkpoint} cntr: ", self.objective_counter)
+                # print(f"chpt {checkpoint} cntr: ", self.objective_counter)
 
                 self.log[checkpoint].append(float(0 if self.global_best_fit < self.smallest_val else self.global_best_fit))
                 self.help_log[checkpoint].append(self.global_best_sol.copy())
@@ -173,33 +173,41 @@ class NL_SHADE_RSP_MID():
 
 
     def resize_pop(self, new_pop_size):
-        if self.pop_size > new_pop_size:
-            points_to_remove = self.pop_size - new_pop_size
-            for L in range(points_to_remove):
-                WorstFit = self.fitmass[0]
-                WorstNum = 0
-                for i in range (1, self.pop_size):
-                    if(self.fitmass[i] > WorstFit):
-                        WorstFit = self.fitmass[i]
-                        WorstNum = i
-                for i in range (WorstNum, self.pop_size - 1):
-                    for j in range(self.dimension):
-                        self.pop[i][j] = self.pop[i+1][j]
-                    self.fitmass[i] = self.fitmass[i+1]
-                    self.pop_lim_count[i] = self.pop_lim_count[i+1]
+        if new_pop_size < self.pop_size:
+            best_indices = np.argpartition(
+                self.fitmass,
+                new_pop_size - 1
+            )[:new_pop_size]
 
-            self.pop = self.pop[:new_pop_size]
-            self.fitmass = self.fitmass[:new_pop_size]
-            self.pop_lim_count = self.pop_lim_count[:new_pop_size]
-        else:
+            self.pop = self.pop[best_indices].copy()
+            self.fitmass = self.fitmass[best_indices].copy()
+            self.pop_lim_count = self.pop_lim_count[best_indices].copy()
+
+        elif new_pop_size > self.pop_size:
+
             points_to_add = new_pop_size - self.pop_size
-            for L in range(points_to_add):
-                t_indx = random.randrange(self.pop_size)
-                t = self.pop[t_indx]
-                t_fit = self.fitmass[t_indx]
-                self.pop.append(copy.deepcopy(t))
-                self.fitmass.append(copy.deepcopy(t_fit))
-                self.pop_lim_count.append(copy.deepcopy(self.pop_lim_count[t_indx]))
+
+            indices = np.random.randint(
+                0,
+                self.pop_size,
+                size=points_to_add
+            )
+
+            self.pop = np.vstack((
+                self.pop,
+                self.pop[indices]
+            ))
+
+            self.fitmass = np.concatenate((
+                self.fitmass,
+                self.fitmass[indices]
+            ))
+
+            self.pop_lim_count = np.concatenate((
+                self.pop_lim_count,
+                self.pop_lim_count[indices]
+            ))
+
         self.pop_size = new_pop_size
 
         self.arch_usages = np.zeros(self.pop_size)
@@ -324,21 +332,19 @@ class NL_SHADE_RSP_MID():
         for curr_indx in range(self.pop_size):
             parents = self.pick_parents(curr_indx)
                     
-            donor = np.zeros(self.dimension)
 
-            for j in range(self.dimension):
-                if self.arch_usages[curr_indx] == 0:
-                    donor[j] = (
-                        self.pop[curr_indx][j] + 
-                        F_generated[curr_indx] * (self.pop[parents[0]][j] - self.pop[curr_indx][j]) + 
-                        F_generated[curr_indx] * (self.pop[parents[1]][j] - self.pop[parents[2]][j])
-                        )
-                else:
-                    donor[j] = (
-                        self.pop[curr_indx][j] + 
-                        F_generated[curr_indx] * (self.pop[parents[0]][j] - self.pop[curr_indx][j]) + 
-                        F_generated[curr_indx] * (self.pop[parents[1]][j] - self.archive[parents[2]][j])
-                        )
+            if self.arch_usages[curr_indx] == 0:
+                donor = (
+                    self.pop[curr_indx] + 
+                    F_generated[curr_indx] * (self.pop[parents[0]] - self.pop[curr_indx]) + 
+                    F_generated[curr_indx] * (self.pop[parents[1]] - self.pop[parents[2]])
+                    )
+            else:
+                donor = (
+                    self.pop[curr_indx] + 
+                    F_generated[curr_indx] * (self.pop[parents[0]] - self.pop[curr_indx]) + 
+                    F_generated[curr_indx] * (self.pop[parents[1]] - self.archive[parents[2]])
+                    )
             
             F = F_generated[curr_indx]
             dim_to_crossover = random.randrange(self.dimension)
@@ -373,79 +379,76 @@ class NL_SHADE_RSP_MID():
                 while (not in_range and num_of_trials<=MAX_NUM_OF_TRIALS):
                     used_repair = True
 
-                    in_range = np.all((pop_tmp[curr_indx] >= self.min_clamp) & (pop_tmp[curr_indx] <= self.max_clamp))
+                    # in_range = np.all((pop_tmp[curr_indx] >= self.min_clamp) & (pop_tmp[curr_indx] <= self.max_clamp))
                     if(num_of_trials > NUM_OF_TR_WITHOUT_F_HANGE):
                         cross_exponential = False
                         if(random.random() < 0.5):
                             cross_exponential = True
 
-                        # F_generated = np.array([None for _ in range(self.pop_size)])
-                        # Cr_generated = np.array([None for _ in range(self.pop_size)])
-
-
                         curr_memory_indx = random.randrange(self.memory_size)
 
                         Cr = min(1.0, max(0.0, random.normalvariate(self.Cr_memory[curr_memory_indx],0.1)))
                         while True:
-                            F =  min(1.0, np.random.standard_cauchy() * self.F_memory[curr_memory_indx] + 0.1) 
+                            F = min(1.0, np.random.standard_cauchy() * self.F_memory[curr_memory_indx] + 0.1)
                             if(F > 0):
                                 break
 
                         F_generated[curr_indx] = F
                         Cr_generated[curr_indx] = Cr
 
-                        Cr_generated = np.flipud(np.sort(Cr_generated))
-
-                        for curr_indx in range(self.pop_size):
-                            parents = self.pick_parents(curr_indx)
-                                    
-                            donor = np.zeros(self.dimension)
-
-                            for j in range(self.dimension):
-                                if self.arch_usages[curr_indx] == 0:
-                                    donor[j] = (
-                                        self.pop[curr_indx][j] + 
-                                        F_generated[curr_indx] * (self.pop[parents[0]][j] - self.pop[curr_indx][j]) + 
-                                        F_generated[curr_indx] * (self.pop[parents[1]][j] - self.pop[parents[2]][j])
-                                        )
-                                else:
-                                    donor[j] = (
-                                        self.pop[curr_indx][j] + 
-                                        F_generated[curr_indx] * (self.pop[parents[0]][j] - self.pop[curr_indx][j]) + 
-                                        F_generated[curr_indx] * (self.pop[parents[1]][j] - self.archive[parents[2]][j])
-                                        )
-                                    
-                            F = F_generated[curr_indx]
-                            dim_to_crossover = random.randrange(self.dimension)
-
-                            if(num_of_trials<=NUM_OF_TR_WITHOUT_F_HANGE):
-                                Cr = Cr_generated[self.backindexes[curr_indx]]
-
-                            Cr_to_use = 0
-                            if self.objective_counter > (0.5 * self.objective_limit):
-                                Cr_to_use = (self.objective_counter/self.objective_limit - 0.5) * 2
-
-                            if cross_exponential == False:
-                                for j in range(self.dimension):
-                                    if random.random() < Cr_to_use or dim_to_crossover == j:
-                                        pop_tmp[curr_indx][j] = donor[j]
-                                    else:
-                                        pop_tmp[curr_indx][j] = self.pop[curr_indx][j]
+                    parents = self.pick_parents(curr_indx)
                                 
+
+
+                    if self.arch_usages[curr_indx] == 0:
+                        donor = (
+                            self.pop[curr_indx] + 
+                            F_generated[curr_indx] * (self.pop[parents[0]] - self.pop[curr_indx]) + 
+                            F_generated[curr_indx] * (self.pop[parents[1]] - self.pop[parents[2]])
+                            )
+                    else:
+                        donor = (
+                            self.pop[curr_indx] + 
+                            F_generated[curr_indx] * (self.pop[parents[0]] - self.pop[curr_indx]) + 
+                            F_generated[curr_indx] * (self.pop[parents[1]] - self.archive[parents[2]])
+                            )
+                                
+                    F = F_generated[curr_indx]
+                    dim_to_crossover = random.randrange(self.dimension)
+
+                    if(num_of_trials<=NUM_OF_TR_WITHOUT_F_HANGE):
+                        Cr = Cr_generated[self.backindexes[curr_indx]]
+
+                    Cr_to_use = 0
+                    if self.objective_counter > (0.5 * self.objective_limit):
+                        Cr_to_use = (self.objective_counter/self.objective_limit - 0.5) * 2
+
+                    if cross_exponential == False:
+                        for j in range(self.dimension):
+                            if random.random() < Cr_to_use or dim_to_crossover == j:
+                                pop_tmp[curr_indx][j] = donor[j]
                             else:
-                                start_loc = random.randrange(self.dimension)
-                                L = start_loc + 1
+                                pop_tmp[curr_indx][j] = self.pop[curr_indx][j]
+                            
+                    else:
+                        start_loc = random.randrange(self.dimension)
+                        L = start_loc + 1
 
-                                while random.random() < Cr and L < self.dimension:
-                                    L += 1
+                        while random.random() < Cr and L < self.dimension:
+                            L += 1
 
-                                pop_tmp[curr_indx] = np.concatenate((self.pop[curr_indx][:start_loc], donor[start_loc:L], self.pop[curr_indx][L:]))
+                        pop_tmp[curr_indx] = np.concatenate((self.pop[curr_indx][:start_loc], donor[start_loc:L], self.pop[curr_indx][L:]))
+
                     in_range = np.all((pop_tmp[curr_indx] >= self.min_clamp) & (pop_tmp[curr_indx] <= self.max_clamp))
                     if not in_range:
                         used_repair = False
                         for j in range(self.dimension):
                             if self.min_clamp > pop_tmp[curr_indx][j] or self.max_clamp < pop_tmp[curr_indx][j]:
-                                pop_tmp[curr_indx][j] = random.randrange(self.min_clamp, self.max_clamp)
+                                pop_tmp[curr_indx][j] = np.random.uniform(self.min_clamp, self.max_clamp)
+
+                    num_of_trials += 1
+
+
 
 # ##################### ^RESAMPLING end 
                 if COUNT_LIMITS:

@@ -114,7 +114,7 @@ class Evaluation_method():
         accuracy = correct_predictions / len(self.batch_idx)
         # self.train_pointer += 0.0001 # HERE
 
-        print("acccc: ", (accuracy), "lossss: ", (train_loss/len(self.batch_idx)))
+        # print("acccc: ", (accuracy), "lossss: ", (train_loss/len(self.batch_idx)))
 
         # Calculate average loss and accuracy
         # return (1 - accuracy), BATCH_SIZE
