@@ -25,8 +25,9 @@ class CMAES:
         self.smallest_val = smallest_val
         self.checkpoints = checkpoints
 
-        self.log = {checkpoint: [] for checkpoint in self.checkpoints}
+        self.log = {checkpoint: [0,0] for checkpoint in self.checkpoints}
         self.sol_log = {checkpoint: [] for checkpoint in self.checkpoints}
+        self.start_time = time.time()
 
         self.objective_counter = 0
         self.seen_checkpoints = set()
@@ -123,7 +124,10 @@ class CMAES:
 
             if checkpoint not in self.seen_checkpoints and self.objective_counter >= checkpoint_fes:
 
-                self.log[checkpoint].append(self.best_error)
+                self.log[checkpoint][0] = (self.best_error)
+                check_time = time.time()
+                self.log[checkpoint][1] = (check_time - self.start_time)
+
                 self.sol_log[checkpoint].append(self.best_solution.copy())
 
                 self.seen_checkpoints.add(checkpoint)

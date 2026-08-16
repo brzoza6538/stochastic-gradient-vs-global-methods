@@ -117,7 +117,7 @@ class BFGS():
         self.checkpoints = checkpoints
         self.smallest_val = smallest_val
 
-        self.log = {checkpoint: [] for checkpoint in self.checkpoints}
+        self.log = {checkpoint: [0, 0] for checkpoint in self.checkpoints}
         self.help_log = {checkpoint: [] for checkpoint in self.checkpoints}
 
         self.seen_checkpoints = set()
@@ -138,6 +138,8 @@ class BFGS():
             self.x = np.random.uniform(self.min_clamp, self.max_clamp, size=self.dimension)
         else:
             self.x = x
+
+        self.start_time = time.time()
 
     def project_x(self, x):
         return np.clip(x, self.min_clamp, self.max_clamp)
@@ -223,9 +225,9 @@ class BFGS():
         # dopisz brakujące checkpointy
         for checkpoint in self.checkpoints:
             if checkpoint not in self.seen_checkpoints:
-                self.log[checkpoint].append(
-                    0 if self.best_error < self.smallest_val else self.best_error
-                )
+                self.log[checkpoint][0] = (0 if self.best_error < self.smallest_val else self.best_error)
+                check_time = time.time()
+                self.log[checkpoint][1] = (check_time - self.start_time)
 
                 if self.best_x is not None:
                     self.help_log[checkpoint].append(self.best_x.copy())
@@ -254,9 +256,9 @@ class BFGS():
 
             if self.objective_counter >= checkpoint_fes:
 
-                self.log[checkpoint].append(
-                    0 if self.best_error < self.smallest_val else self.best_error
-                )
+                self.log[checkpoint][0] = (0 if self.best_error < self.smallest_val else self.best_error)
+                check_time = time.time()
+                self.log[checkpoint][1] = (check_time - self.start_time)
 
                 if self.best_x is not None:
                     self.help_log[checkpoint].append(

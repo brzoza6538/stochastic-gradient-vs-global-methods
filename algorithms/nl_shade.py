@@ -47,8 +47,9 @@ class NL_SHADE_RSP_MID():
         self.f_objective = f_objective
         self.dimension = dimension
 
-        self.log = {checkpoint: [] for checkpoint in self.checkpoints}
+        self.log = {checkpoint: [0,0] for checkpoint in self.checkpoints}
         self.help_log = {checkpoint: [] for checkpoint in self.checkpoints}
+        self.start_time = time.time()
 
         self.checkpoints = checkpoints
         self.seen_checkpoints = set()
@@ -140,8 +141,11 @@ class NL_SHADE_RSP_MID():
         if end:
             for checkpoint in self.checkpoints:
                 if checkpoint not in self.seen_checkpoints:
-                    self.log[checkpoint].append(float(0 if self.global_best_fit < self.smallest_val else self.global_best_fit))
-                    self.help_log[checkpoint].append(self.global_best_sol.copy())
+                    self.log[checkpoint][0] = [float(0 if self.global_best_fit < self.smallest_val else self.global_best_fit)]
+                    check_time = time.time()
+                    self.log[checkpoint][1] = (check_time - self.start_time)
+
+                    self.help_log[checkpoint] = [self.global_best_sol.copy()]
 
                     self.seen_checkpoints.add(checkpoint)
 
@@ -153,9 +157,14 @@ class NL_SHADE_RSP_MID():
                 # print("--------------------")
                 # print(f"chkpnt{checkpoint}  F : ", self.F_memory)
                 # print("--------------------")
-                print(f"chpt {checkpoint} cntr: ", self.objective_counter)
+                # print(f"chpt {checkpoint} cntr: ", self.objective_counter)
 
-                self.log[checkpoint].append(0)
+                self.log[checkpoint][0] = 0
+                check_time = time.time()
+                self.log[checkpoint][1] = (check_time - self.start_time)
+
+                self.seen_checkpoints.add(checkpoint)
+
             if checkpoint not in self.seen_checkpoints and self.objective_counter >= checkpoint_fes:
                 # print("--------------------")
                 # print(f"chkpnt{checkpoint}  Cr : ", self.Cr_memory)
@@ -164,12 +173,16 @@ class NL_SHADE_RSP_MID():
                 # print("--------------------")
                 # print(f"chpt {checkpoint} cntr: ", self.objective_counter)
 
-                self.log[checkpoint].append(float(0 if self.global_best_fit < self.smallest_val else self.global_best_fit))
-                self.help_log[checkpoint].append(self.global_best_sol.copy())
+                self.log[checkpoint][0] = [float(0 if self.global_best_fit < self.smallest_val else self.global_best_fit)]
+                check_time = time.time()
+                self.log[checkpoint][1] = (check_time - self.start_time)
+
+                self.help_log[checkpoint] = [self.global_best_sol.copy()]
 
                 self.seen_checkpoints.add(checkpoint)
-        
-            
+                print("AAAAAAAAAA checkpoint : ", checkpoint, " :  ")
+                print(time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()))
+
 
 
     def resize_pop(self, new_pop_size):

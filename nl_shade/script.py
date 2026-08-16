@@ -34,4 +34,4 @@ def run_nl_shade(dimension, curr_f, run_id, seed=None):
     return result
 
 
-globals.gather_data(partial(run_nl_shade), "nl_shade_returning")
+globals.gather_data(partial(run_nl_shade), "nl_shade_curr_updt")

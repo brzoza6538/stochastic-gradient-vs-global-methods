@@ -42,7 +42,7 @@ class Adagrad():
         self.objective_counter = 0
         self.error = None
         self.checkpoints = checkpoints
-        self.log = {checkpoint: [] for checkpoint in self.checkpoints}
+        self.log = {checkpoint: [0, 0] for checkpoint in self.checkpoints}
         self.seen_checkpoints = set()
 
         if(objective_limit is None):
@@ -54,6 +54,8 @@ class Adagrad():
             self.x = np.random.uniform(self.min_clamp, self.max_clamp, size=self.dimension)
         else:
             self.x = x 
+
+        self.start_time = time.time()
 
     def start(self):
         while (self.objective_counter < self.objective_limit) and (self.error is None or self.error > self.smallest_val):
@@ -87,8 +89,15 @@ class Adagrad():
             checkpoint_fes = int(checkpoint * self.objective_limit)
             
             if self.error < self.smallest_val and self.objective_counter <= checkpoint_fes:
-                self.log[checkpoint].append(0)
+                self.log[checkpoint][0] = 0
+                check_time = time.time()
+                self.log[checkpoint][1] = (check_time - self.start_time)
+
+                self.seen_checkpoints.add(checkpoint)
 
             if checkpoint not in self.seen_checkpoints and self.objective_counter >= checkpoint_fes:
-                self.log[checkpoint].append(0 if self.error < self.smallest_val else self.error)
+                self.log[checkpoint][0] = (0 if self.error < self.smallest_val else self.error)
+                check_time = time.time()
+                self.log[checkpoint][1] = (check_time - self.start_time)
+
                 self.seen_checkpoints.add(checkpoint)
