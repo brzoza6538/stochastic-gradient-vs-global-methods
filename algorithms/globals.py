@@ -6,6 +6,7 @@ import os
 import math
 import random
 import copy
+import time
 
 def_dimensions = [10, 30, 50]
 def_runs = 51
@@ -16,8 +17,11 @@ def_smallest_val = 1e-8
 # dla original_clamps i def_clamps liczymy bez normalizacji 
 # def_clamps = [-100, 100]
 
-def_clamps = [-2, 2]
-original_clamps = [-2, 2]
+# sewitch for networks
+# def_clamps = [-2, 2]
+# original_clamps = [-2, 2]
+def_clamps = [-1, 1]
+original_clamps = [-100, 100]
 
 class Evaluation_method():
     def __init__(self, tested_f, dimension):
@@ -58,6 +62,9 @@ class Evaluation_method():
     
 
 def gather_data(algorithm, algo_name):
+    start = time.time()
+    print("START : ", time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()))
+
     for curr_f in CEC2013:
         print("doing f ", curr_f["shortname"])
         records = []
@@ -73,7 +80,7 @@ def gather_data(algorithm, algo_name):
             record = {checkpoint: [] for checkpoint in def_checkpoints}
             for entry in run_records:
                 if(entry["dimension"] == dimension):
-                    record[entry["checkpoint"]].append(entry["error"])
+                    record[entry["checkpoint"]].append(entry["error"][0])
 
             for checkpoint in def_checkpoints:
                 errors_at_checkpoint = record[checkpoint]
@@ -121,6 +128,9 @@ def gather_data(algorithm, algo_name):
             writer = csv.DictWriter(file, fieldnames=run_keys)
             writer.writeheader()
             writer.writerows(run_records)
+
+    end = time.time()
+    print("ASDFGHJKL - It took", (end - start), "seconds!")
 
 CEC2013 = [
     {"shortname": "F12013", "name": "Sphere Function", "func": cec.F12013, "global_min": -1400},
