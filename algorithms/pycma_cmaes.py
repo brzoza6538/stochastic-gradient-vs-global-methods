@@ -526,6 +526,7 @@ class CMAResult(BaseResult):
 
     midpoint_solutions: np.ndarray   
     best_solutions: np.ndarray       
+    times: np.ndarray 
 
 
     @staticmethod
@@ -577,6 +578,9 @@ def lincmaes(
     midpoint_solutions = []
     best_solutions = []
 
+    times_values = []
+    start_time = time.perf_counter()
+
     if get_step_information:
         golden_step_x, golden_step_sizes, regular_step_sizes = [], [], []
 
@@ -613,6 +617,7 @@ def lincmaes(
 
 
             evals_values.append(es.countevals)
+            times_values.append(time.perf_counter() - start_time)
 
             midpoint_values.append(f(es.mean))
             midpoint_solutions.append(es.mean.copy())
@@ -681,6 +686,7 @@ def lincmaes(
             best_solutions.append(es.best.x.copy())
 
             evals_values.append(es.countevals)
+            times_values.append(time.perf_counter() - start_time)
 
         except RuntimeError:
             with open("golden_failed.csv", "a") as f:
@@ -708,6 +714,7 @@ def lincmaes(
         nums_evals=np.array(evals_values),
         midpoint_solutions=np.array(midpoint_solutions),
         best_solutions=np.array(best_solutions),
+        times=np.array(times_values),
 
     )
 
@@ -760,6 +767,9 @@ def eswrapper(
     midpoint_solutions = []
     best_solutions = []
 
+    times_values = []
+    start_time = time.perf_counter()
+
     inopts = DEFAULT_CMA_OPTIONS.copy()
     if popsize:
         inopts["popsize"] = popsize
@@ -794,6 +804,8 @@ def eswrapper(
                 callback(es)
 
         evals_values.append(es.countevals)
+        times_values.append(time.perf_counter() - start_time)
+
         midpoint_values.append(f(es.mean))
         best_values.append(f(es.best.x))
         midpoint_solutions.append(es.mean.copy())
@@ -809,5 +821,6 @@ def eswrapper(
         nums_evals=np.array(evals_values),
         midpoint_solutions=np.array(midpoint_solutions),
         best_solutions=np.array(best_solutions),
+        times=np.array(times_values),
 
     )

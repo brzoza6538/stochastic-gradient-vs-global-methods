@@ -44,21 +44,25 @@ def run_cmaes(dimension, curr_f, run_id,  seed=None):
         if( abs(data.nums_evals[idx] - eval_checkpoint ) < 50 ):
             # closest_value = abs(float(curr_f["global_min"]) - data.midpoint_values[idx])
             closest_value = data.best_values[idx]
+            timer = data.times[idx]
+
             result.append({
                 "function": curr_f["shortname"],
                 "dimension": dimension,
                 "run": run_id,
                 "checkpoint": checkpoint,
-                "error": [closest_value]
+                "error": [closest_value, timer]
             })
         else:
             closest_value = 0
+            timer = result[-1]["error"][1]
+
             result.append({
                 "function": curr_f["shortname"],
                 "dimension": dimension,
                 "run": run_id,
                 "checkpoint": checkpoint,
-                "error": [closest_value]
+                "error": [closest_value, timer]
             })
 
 
