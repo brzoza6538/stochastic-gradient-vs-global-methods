@@ -175,3 +175,5 @@ cython_debug/
 brudnopis.ipynb
 train.csv
 test.csv
+
+todo.txt
