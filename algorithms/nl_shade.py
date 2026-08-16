@@ -141,7 +141,7 @@ class NL_SHADE_RSP_MID():
         if end:
             for checkpoint in self.checkpoints:
                 if checkpoint not in self.seen_checkpoints:
-                    self.log[checkpoint][0] = [float(0 if self.global_best_fit < self.smallest_val else self.global_best_fit)]
+                    self.log[checkpoint][0] = float(0 if self.global_best_fit < self.smallest_val else self.global_best_fit)
                     check_time = time.time()
                     self.log[checkpoint][1] = (check_time - self.start_time)
 
@@ -173,7 +173,7 @@ class NL_SHADE_RSP_MID():
                 # print("--------------------")
                 # print(f"chpt {checkpoint} cntr: ", self.objective_counter)
 
-                self.log[checkpoint][0] = [float(0 if self.global_best_fit < self.smallest_val else self.global_best_fit)]
+                self.log[checkpoint][0] = float(0 if self.global_best_fit < self.smallest_val else self.global_best_fit)
                 check_time = time.time()
                 self.log[checkpoint][1] = (check_time - self.start_time)
 
