@@ -16,4 +16,6 @@ cd $SLURM_SUBMIT_DIR
 source $BASE_DIR/.venv/bin/activate
 export PYTHONPATH="${PYTHONPATH}:${BASE_DIR}:${BASE_DIR}/networks_iris"
 cd networks_iris/NLShade
-python3 NLShade_script.py
+
+export PYTHONUNBUFFERED=1
+python3 -u NLShade_script.py

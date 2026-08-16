@@ -8,4 +8,4 @@ images = mnist.data.to_numpy(dtype=np.float32)[:POP_SIZE]
 labels = mnist.target.to_numpy(dtype=np.int64)[:POP_SIZE]
 
 
-gather_data(partial(run_cmaes_net, images=images, labels=labels), "cmaes_net_acloss_batched")
+gather_data(partial(run_cmaes_net, images=images, labels=labels), "cmaes_net_acloss_batched_2")

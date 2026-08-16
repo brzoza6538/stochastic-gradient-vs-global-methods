@@ -117,7 +117,7 @@ class Evaluation_method():
         accuracy = correct_predictions / len(self.batch_idx)
         # self.train_pointer += 0.0001 # HERE
 
-        print("acccc: ", (accuracy), "lossss: ", (train_loss/len(self.batch_idx)))
+        # print("acccc: ", (accuracy), "lossss: ", (train_loss/len(self.batch_idx)))
 
         # Calculate average loss and accuracy
         # return (1 - accuracy), BATCH_SIZE
@@ -206,7 +206,7 @@ class Evaluation_method():
         
         accuracy = correct_predictions / len(self.x_test)
         # self.test_pointer += 0.0001 # HERE
-
+        
         print("acccc: ", (accuracy), "lossss: ", (test_loss/len(self.x_test)))
 
         # Calculate average loss and accuracy
@@ -244,6 +244,9 @@ def run_nlshade_net(run_id, images, labels, seed=None):
         checkpoints=globals.def_checkpoints
     )
     eval_meth.wrapper = algo
+
+    print("START  :  " , time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()))
+
     algo.start()
 
     result = []

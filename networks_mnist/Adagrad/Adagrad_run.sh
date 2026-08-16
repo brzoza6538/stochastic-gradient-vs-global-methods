@@ -1,12 +1,12 @@
 #!/bin/bash -l
-#SBATCH -J Adagrad_net
+#SBATCH -J M_Adagrad_net
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=26
-#SBATCH --mem=1GB
+#SBATCH --mem=30GB
 #SBATCH --time=24:00:00
 #SBATCH -p plgrid
-#SBATCH --output="networks_mnist/Adagrad/Adagrad_output.log"
-#SBATCH --error="networks_mnist/Adagrad/Adagrad_error.log"
+#SBATCH --output="networks_mnist/Adagrad/Adagrad_output_2.log"
+#SBATCH --error="networks_mnist/Adagrad/Adagrad_error_2.log"
 
 
 
@@ -16,4 +16,5 @@ cd $SLURM_SUBMIT_DIR
 source $BASE_DIR/.venv/bin/activate
 export PYTHONPATH="${PYTHONPATH}:${BASE_DIR}:${BASE_DIR}/networks_mnist"
 cd networks_mnist/Adagrad
-python3 Adagrad_script.py
+export PYTHONUNBUFFERED=1
+python3 -u Adagrad_script.py

@@ -15,6 +15,7 @@ def gather_data(algorithm, algo_name):
     run_records = []
 
     start = time.time()
+    print("START : ", time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()))
 
     # for run_id in range(RUNS):
     #     sublist = algorithm(run_id)   # run_adam_net(...)

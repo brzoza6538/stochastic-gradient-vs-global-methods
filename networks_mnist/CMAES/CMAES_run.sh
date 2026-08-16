@@ -1,12 +1,12 @@
 #!/bin/bash -l
-#SBATCH -J CMAES_net
+#SBATCH -J M_CMAES_net
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=26
-#SBATCH --mem=15GB
+#SBATCH --mem=30GB
 #SBATCH --time=48:00:00
 #SBATCH -p plgrid
-#SBATCH --output="networks_mnist/CMAES/CMAES_output.log"
-#SBATCH --error="networks_mnist/CMAES/CMAES_error.log"
+#SBATCH --output="networks_mnist/CMAES/CMAES_output_2.log"
+#SBATCH --error="networks_mnist/CMAES/CMAES_error_2.log"
 
 
 
@@ -16,4 +16,5 @@ cd $SLURM_SUBMIT_DIR
 source $BASE_DIR/.venv/bin/activate
 export PYTHONPATH="${PYTHONPATH}:${BASE_DIR}:${BASE_DIR}/networks_mnist"
 cd networks_mnist/CMAES
-python3 CMAES_script.py
+export PYTHONUNBUFFERED=1
+python3 -u CMAES_script.py
