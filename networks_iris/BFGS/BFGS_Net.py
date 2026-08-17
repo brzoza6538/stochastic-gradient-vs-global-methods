@@ -65,7 +65,6 @@ class Evaluation_method():
         self.my_network.compile(loss=self.my_loss)
         self.train_pointer = 0
 
-
     def evaluate(self, x):
         # Y = self.objective_f.evaluate(x)
         # error = abs(Y - self.global_min)
@@ -165,7 +164,7 @@ class Evaluation_method():
     
     
 
-    def test_error(self, x):
+    def test_error(self, x, check_time):
         # Y = self.objective_f.evaluate(x)
         # error = abs(Y - self.global_min)
         # evaluations_used = 1
@@ -204,7 +203,7 @@ class Evaluation_method():
         print("acccc: ", (accuracy), "lossss: ", (test_loss/(len(self.x_test))))
 
         # Calculate average loss and accuracy
-        return (((1 - accuracy), (test_loss/len(self.x_test))))
+        return (((1 - accuracy), (test_loss/len(self.x_test)), check_time))
 
 
 def finite_diff_grad(f, x, eps=1e-5):
@@ -290,8 +289,9 @@ def run_bfgs_net(run_id, images, labels, seed=None):
 
     for checkpoint in globals.def_checkpoints:
         if checkpoint in optimizer.log and len(optimizer.log[checkpoint]) > 0:
+            check_time = optimizer.log[checkpoint][-1]
             checkpoint_x = optimizer.help_log[checkpoint][-1]
-            loss_grad = eval_meth.test_error(checkpoint_x) # HERE - switch acc and loss
+            loss_grad = eval_meth.test_error(checkpoint_x, check_time) # HERE - switch acc and loss
 
         else:
             loss_grad = 0

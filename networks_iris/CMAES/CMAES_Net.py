@@ -168,7 +168,7 @@ class Evaluation_method():
 
 
 
-    def test_error(self, x):
+    def test_error(self, x, check_time):
         # Y = self.objective_f.evaluate(x)
         # error = abs(Y - self.global_min)
         # evaluations_used = 1
@@ -210,7 +210,7 @@ class Evaluation_method():
 
         # Calculate average loss and accuracy
         # return (1 - accuracy), BATCH_SIZE
-        return (((1 - accuracy), (test_loss/len(self.x_test))))# HERE - switch acc and loss
+        return (((1 - accuracy), (test_loss/len(self.x_test)), check_time))# HERE - switch acc and loss
 
 ##############
 
@@ -254,10 +254,11 @@ def run_cmaes_net(run_id, images, labels, seed=None):
 
         idx_end = max(1, int(len(data.best_values) * checkpoint))
 
-        sol_data = data.best_solutions[np.argmin(data.best_values[:idx_end])]
+        help_i = np.argmin(data.best_values[:idx_end])
+        sol_data = data.best_solutions[help_i]
+        check_time = data.times[help_i]
 
-
-        test_result = eval_meth.test_error(sol_data)
+        test_result = eval_meth.test_error(sol_data, check_time)
 
         result.append({
             "algorithm": "cmaes",

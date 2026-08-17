@@ -166,7 +166,7 @@ class Evaluation_method():
         return accuracy
     
 
-    def test_error(self, x):
+    def test_error(self, x, check_time):
         # Y = self.objective_f.evaluate(x)
         # error = abs(Y - self.global_min)
         # evaluations_used = 1
@@ -208,7 +208,7 @@ class Evaluation_method():
 
         # Calculate average loss and accuracy
         # return (1 - accuracy), BATCH_SIZE
-        return (((1 - accuracy), (test_loss/len(self.x_test)))) # HERE - switch acc and loss
+        return (((1 - accuracy), (test_loss/len(self.x_test)), check_time)) # HERE - switch acc and loss
 
 
 
@@ -250,9 +250,10 @@ def run_nlshade_net(run_id, images, labels, seed=None):
         eval_checkpoint = max_fes * checkpoint
 
         if len(algo.log[checkpoint]) > 0:
-            closest_value = algo.log[checkpoint][-1]
-            checkpoint_x = algo.help_log[checkpoint][-1]
-            loss_grad = eval_meth.test_error(checkpoint_x)
+            closest_value = algo.log[checkpoint][0]
+            check_time = algo.log[checkpoint][1]
+            checkpoint_x = algo.help_log[checkpoint][0]
+            loss_grad = eval_meth.test_error(checkpoint_x, check_time)
 
             result.append({
                 "algorithm": "nlshade",

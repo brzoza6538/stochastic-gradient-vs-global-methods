@@ -55,7 +55,7 @@ def run_cmaes(dimension, curr_f, run_id,  seed=None):
             })
         else:
             closest_value = 0
-            timer = result[-1]["error"][1]
+            timer = data.times[idx]
 
             result.append({
                 "function": curr_f["shortname"],
@@ -64,8 +64,6 @@ def run_cmaes(dimension, curr_f, run_id,  seed=None):
                 "checkpoint": checkpoint,
                 "error": [closest_value, timer]
             })
-
-
     return result
 
 globals.gather_data(partial(run_cmaes), "cmaes_curr_updt")

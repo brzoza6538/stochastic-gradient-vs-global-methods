@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 
 from typing import List
 from algorithms import globals
+import time 
 
 # FULL_MNIST = 784
 FULL_IRIS = 4
@@ -159,7 +160,7 @@ class Network:
         self.E=1e-8
         self.B1=0.9 
         self.B2=0.999 
-
+        self.start_point = time.time()
 
     def compile(self, loss: Loss) -> None:
         self.loss = loss
@@ -275,7 +276,10 @@ class Network:
                         acc = self.calculate_acc_checkpoint(x_test, y_test)
                         loss_grad = self.calculate_loss_checkpoint(x_test, y_test)
                         print(acc)
-                        self.log[checkpoint].append(((1 - acc), loss_grad)) # HERE - switch acc and loss
+                        check_time = time.time()
+                        check_time = (check_time - self.start_point)
+
+                        self.log[checkpoint].append(((1 - acc), loss_grad, check_time)) # HERE - switch acc and loss
                         self.seen_checkpoints.add(checkpoint)
 
                 # Stop if MAX_EVALS reached

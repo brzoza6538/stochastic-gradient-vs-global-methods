@@ -25,7 +25,7 @@ class AdagradNetwork:
         self.log = {checkpoint: [] for checkpoint in self.checkpoints}
 
         self.E = 1e-8
-
+        self.start_point = time.time()
     def compile(self, loss):
         self.loss = loss
 
@@ -114,7 +114,10 @@ class AdagradNetwork:
                     if checkpoint not in self.seen_checkpoints and self.counter >= checkpoint_fes:
                         loss_grad = self.calculate_loss_checkpoint(x_test, y_test)
                         acc = self.calculate_acc_checkpoint(x_test, y_test)
-                        self.log[checkpoint].append(((1-acc), loss_grad)) # HERE - switch acc and loss
+
+                        check_time = (time.time() - self.start_point)
+                        self.log[checkpoint].append(((1-acc), loss_grad, check_time)) # HERE - switch acc and loss
+
                         self.seen_checkpoints.add(checkpoint)
 
                         if verbose:
