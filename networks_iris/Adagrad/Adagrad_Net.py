@@ -162,9 +162,9 @@ def run_adagrad_net(run_id, images, labels,  seed=None):
 
 
     fully_connected_layer1 = FullyConnected(input_size=FULL_IRIS, output_size=HID_LAYER_1)
-    tanh_layer1 = ReLU()
+    tanh_layer1 = Tanh()
     fully_connected_layer2 = FullyConnected(input_size=HID_LAYER_1, output_size=HID_LAYER_2)
-    tanh_layer2 = ReLU()
+    tanh_layer2 = Tanh()
     fully_connected_layer3 = FullyConnected(input_size=HID_LAYER_2, output_size=IRIS_OUTPUT)
     tanh_layer3 = Softmax()
 

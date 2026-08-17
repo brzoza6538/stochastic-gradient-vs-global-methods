@@ -47,9 +47,9 @@ class Evaluation_method():
 
 
         self.fully_connected_layer1 = FullyConnected(input_size=FULL_IRIS, output_size=HID_LAYER_1)
-        self.tanh_layer1 = ReLU()
+        self.tanh_layer1 = Tanh()
         self.fully_connected_layer2 = FullyConnected(input_size=HID_LAYER_1, output_size=HID_LAYER_2)
-        self.tanh_layer2 = ReLU()
+        self.tanh_layer2 = Tanh()
         self.fully_connected_layer3 = FullyConnected(input_size=HID_LAYER_2, output_size=IRIS_OUTPUT)
         self.tanh_layer3 = Softmax()
 
@@ -225,7 +225,7 @@ def run_cmaes_net(run_id, images, labels, seed=None):
     seed = seed % (2**32)
 
     dimension = ((FULL_IRIS + 1)*HID_LAYER_1 + (HID_LAYER_1 + 1)*HID_LAYER_2 + (HID_LAYER_2 + 1)*IRIS_OUTPUT)
-    x0 = np.random.normal(CLAMPS[0], CLAMPS[1], size=dimension)
+    x0 = np.random.normal(0.0, 0.5, size=dimension)
     # switch_interval = 1
     popsize = int(4 + np.floor(3 * np.log(dimension)))
     eval_meth = Evaluation_method(seed, images, labels, popsize)

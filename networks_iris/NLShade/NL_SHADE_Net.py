@@ -41,9 +41,9 @@ class Evaluation_method():
         self.y_test = self.lb.transform(self.y_test)
 
         self.fully_connected_layer1 = FullyConnected(input_size=FULL_IRIS, output_size=HID_LAYER_1)
-        self.tanh_layer1 = ReLU()
+        self.tanh_layer1 = Tanh()
         self.fully_connected_layer2 = FullyConnected(input_size=HID_LAYER_1, output_size=HID_LAYER_2)
-        self.tanh_layer2 = ReLU()
+        self.tanh_layer2 = Tanh()
         self.fully_connected_layer3 = FullyConnected(input_size=HID_LAYER_2, output_size=IRIS_OUTPUT)
         self.tanh_layer3 = Softmax()
 
@@ -226,7 +226,7 @@ def run_nlshade_net(run_id, images, labels, seed=None):
                  (HID_LAYER_2 + 1)*IRIS_OUTPUT)
 
     pop_size = dimension * 5
-    x0 = np.random.normal(CLAMPS[0], CLAMPS[1], size=(pop_size, dimension))
+    x0 = np.random.normal(0.0, 0.5, size=(pop_size, dimension))
 
     eval_meth = Evaluation_method(seed, images, labels)
     f_eval = eval_meth.evaluate

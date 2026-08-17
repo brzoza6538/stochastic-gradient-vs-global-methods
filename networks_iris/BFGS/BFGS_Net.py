@@ -19,6 +19,8 @@ class Evaluation_method():
 
     def __init__(self, seed, images, labels ):
         self.x_train, self.x_test, self.y_train, self.y_test = train_test_split(images, labels, test_size=0.2, random_state=seed) # TODO = add a  seed that changes every time?
+        self.seed = seed
+        np.random.seed(seed)
 
         self.batch_valid = False
         self.batch_idx = None
@@ -46,9 +48,9 @@ class Evaluation_method():
 
 
         self.fully_connected_layer1 = FullyConnected(input_size=FULL_IRIS, output_size=HID_LAYER_1)
-        self.tanh_layer1 = ReLU()
+        self.tanh_layer1 = Tanh()
         self.fully_connected_layer2 = FullyConnected(input_size=HID_LAYER_1, output_size=HID_LAYER_2)
-        self.tanh_layer2 = ReLU()
+        self.tanh_layer2 = Tanh()
         self.fully_connected_layer3 = FullyConnected(input_size=HID_LAYER_2, output_size=IRIS_OUTPUT)
         self.tanh_layer3 = Softmax()
 
@@ -64,6 +66,9 @@ class Evaluation_method():
 
         self.my_network.compile(loss=self.my_loss)
         self.train_pointer = 0
+
+
+        self.epoch_counter = 0
 
     def evaluate(self, x):
         # Y = self.objective_f.evaluate(x)
@@ -92,14 +97,33 @@ class Evaluation_method():
 
         # l = int(self.train_pointer) * BATCH_SIZE
 
+        prev = self.batch_idx
         if not self.batch_valid:
-            self.batch_idx = np.random.choice(
-                len(self.x_train),
-                BATCH_SIZE,
-                replace=False
-            )
+
+            if self.batch_idx is None:
+                self.batch_idx = np.random.choice(
+                    len(self.x_train), BATCH_SIZE, replace=False
+                )
+                self.batch_idx = np.sort(self.batch_idx)
+
+            elif self.epoch_counter % 100 == 0:
+                half = BATCH_SIZE // 10
+
+                keep = np.random.choice(self.batch_idx, half, replace=False)
+
+                available = np.setdiff1d(
+                    np.arange(len(self.x_train)),
+                    self.batch_idx
+                )
+
+                new = np.random.choice(available, half, replace=False)
+
+                self.batch_idx = np.sort(np.concatenate([keep, new]))
+
+
+            self.epoch_counter += 1
             self.batch_valid = True
-            
+
         batch_x = self.x_train[self.batch_idx]
         batch_y = self.y_train[self.batch_idx]
 
@@ -121,9 +145,9 @@ class Evaluation_method():
         print("acccc: ", (accuracy), "lossss: ", (train_loss/len(self.batch_idx)))
 
         # Calculate average loss and accuracy
-        return (1 - accuracy), len(self.batch_idx) # HERE learn by acc-loss
+        # return (1 - accuracy), len(self.batch_idx) # HERE learn by acc-loss
 
-        # return train_loss / len(self.batch_idx), len(self.batch_idx)
+        return train_loss / len(self.batch_idx), len(self.batch_idx)
 
 
     def test(self, x):
@@ -192,7 +216,7 @@ class Evaluation_method():
             y_pred = self.my_network(x_i)
 
             current_loss = self.my_loss.calculate_loss(y_true, y_pred)
-            test_loss += np.mean(current_loss)
+            test_loss += current_loss
 
             predicted_label = np.argmax(y_pred)
             true_label = np.argmax(y_true)
@@ -231,12 +255,23 @@ class BFGSObjectiveWrapper:
         return loss, evals
 
     def f_gradient(self, x):
-        grad = finite_diff_grad(lambda v: self.eval_meth.evaluate(v)[0], x)
+        evals = 0
+
+        def objective(v):
+            nonlocal evals
+            loss, n_evals = self.eval_meth.evaluate(v)
+            evals += n_evals
+            return loss
+
+        grad = finite_diff_grad(
+            objective,
+            x,
+            eps=1e-4
+        )
 
         self.eval_meth.batch_valid = False
 
-        return grad, len(x) + 1
-
+        return grad, evals
 
 def run_bfgs_net(run_id, images, labels, seed=None):
 
@@ -266,8 +301,8 @@ def run_bfgs_net(run_id, images, labels, seed=None):
         (HID_LAYER_1 + 1) * HID_LAYER_2 +
         (HID_LAYER_2 + 1) * IRIS_OUTPUT
     )
-
-    x0 = np.random.normal(CLAMPS[0], CLAMPS[1], size=dimension)
+    np.random.seed(seed)
+    x0 = np.random.normal(0.0, 0.5, size=dimension)
 
     optimizer = BFGS(
         f_objective=wrapper.f_objective,
