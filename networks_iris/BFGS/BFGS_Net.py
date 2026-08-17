@@ -216,7 +216,7 @@ class Evaluation_method():
             y_pred = self.my_network(x_i)
 
             current_loss = self.my_loss.calculate_loss(y_true, y_pred)
-            test_loss += current_loss
+            test_loss += np.mean(current_loss)
 
             predicted_label = np.argmax(y_pred)
             true_label = np.argmax(y_true)

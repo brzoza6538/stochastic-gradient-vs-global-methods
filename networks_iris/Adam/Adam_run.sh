@@ -2,7 +2,7 @@
 #SBATCH -J adam_net
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=26
-#SBATCH --mem=1GB
+#SBATCH --mem=3GB
 #SBATCH --time=24:00:00
 #SBATCH -p plgrid
 #SBATCH --output="networks_iris/Adam/adam_output.log"
