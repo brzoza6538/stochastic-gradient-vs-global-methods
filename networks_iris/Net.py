@@ -17,7 +17,7 @@ HID_LAYER_2 = 3
 # OUTPUT = 10
 IRIS_OUTPUT = 3
 
-BATCH_SIZE = 50
+BATCH_SIZE = 80
 POP_SIZE = 150
 
 MAX_EVALS = 10000 * 40
@@ -266,7 +266,7 @@ class Network:
                         layer.bias_derivative.fill(0)
 
                 # --- Update counters ---
-                self.counter += len(x_batch)
+                self.counter += len(x_batch)*2
 
                 # --- Collect checkpoint data ---
                 for checkpoint in self.checkpoints:

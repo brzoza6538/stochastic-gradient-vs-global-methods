@@ -70,6 +70,68 @@ class Evaluation_method():
 
         self.epoch_counter = 0
 
+
+    def gradient(self, x):
+        pointer = 0
+
+        # ustawienie parametrów sieci
+        for layer in self.my_network.layers:
+            if isinstance(layer, FullyConnected):
+                n_weights = layer.input_size * layer.output_size
+
+                layer.weights = x[
+                    pointer:pointer + n_weights
+                ].reshape(layer.input_size, layer.output_size)
+
+                pointer += n_weights
+
+                layer.bias = x[
+                    pointer:pointer + layer.output_size
+                ].reshape(1, layer.output_size)
+
+                pointer += layer.output_size
+
+
+        batch_x = self.x_train[self.batch_idx]
+        batch_y = self.y_train[self.batch_idx]
+
+        # forward
+        y_pred = self.my_network(batch_x)
+
+        # dL/dy
+        loss_gradient = self.my_loss.loss_derivative(
+            batch_y,
+            y_pred
+        )
+
+        # backward
+        for layer in reversed(self.my_network.layers):
+            loss_gradient = layer.backward(loss_gradient)
+
+        # zbierz gradient
+        gradient = []
+
+        for layer in self.my_network.layers:
+            if isinstance(layer, FullyConnected):
+
+                gradient.extend(
+                    layer.weights_derivative.flatten()
+                )
+
+                gradient.extend(
+                    layer.bias_derivative.flatten()
+                )
+
+        # wyzeruj gradienty
+        for layer in self.my_network.layers:
+            if isinstance(layer, FullyConnected):
+                layer.weights_derivative.fill(0)
+                layer.bias_derivative.fill(0)
+
+        self.batch_valid = False
+
+        return np.array(gradient), len(batch_x)*2
+
     def evaluate(self, x):
         # Y = self.objective_f.evaluate(x)
         # error = abs(Y - self.global_min)
@@ -106,7 +168,7 @@ class Evaluation_method():
                 )
                 self.batch_idx = np.sort(self.batch_idx)
 
-            elif self.epoch_counter % 100 == 0:
+            elif self.epoch_counter % 50 == 0:
                 half = BATCH_SIZE // 10
 
                 keep = np.random.choice(self.batch_idx, half, replace=False)
@@ -122,32 +184,44 @@ class Evaluation_method():
 
 
             self.epoch_counter += 1
-            self.batch_valid = True
 
         batch_x = self.x_train[self.batch_idx]
         batch_y = self.y_train[self.batch_idx]
 
 
-        # for x_i, y_true in zip(self.x_train[ l :  l + BATCH_SIZE], self.y_train[ l : l + BATCH_SIZE]):
-        for x_i, y_true in zip(batch_x, batch_y):
-            #x = x.reshape(1, -1)
-            y_pred = self.my_network(x_i)
+        # # # for x_i, y_true in zip(self.x_train[ l :  l + BATCH_SIZE], self.y_train[ l : l + BATCH_SIZE]):
+        # # for x_i, y_true in zip(batch_x, batch_y):
+        # #     #x = x.reshape(1, -1)
+        # #     y_pred = self.my_network(x_i)
 
-            current_loss = self.my_loss.calculate_loss(y_true, y_pred)
-            train_loss += np.mean(current_loss)
+        # #     current_loss = self.my_loss.calculate_loss(y_true, y_pred)
+        # #     train_loss += np.mean(current_loss)
 
-            predicted_label = np.argmax(y_pred)
-            true_label = np.argmax(y_true)
-            correct_predictions += (predicted_label == true_label)
+        # #     predicted_label = np.argmax(y_pred)
+        # #     true_label = np.argmax(y_true)
+        # #     correct_predictions += (predicted_label == true_label)
         
-        accuracy = correct_predictions / len(self.batch_idx)
+        # # accuracy = correct_predictions / len(self.batch_idx)
 
-        print("acccc: ", (accuracy), "lossss: ", (train_loss/len(self.batch_idx)))
+        # # print("acccc: ", (accuracy), "lossss: ", (train_loss/len(self.batch_idx)))
 
-        # Calculate average loss and accuracy
-        # return (1 - accuracy), len(self.batch_idx) # HERE learn by acc-loss
+        # # # Calculate average loss and accuracy
+        # # # return (1 - accuracy), len(self.batch_idx) # HERE learn by acc-loss
 
-        return train_loss / len(self.batch_idx), len(self.batch_idx)
+        # # return train_loss / len(self.batch_idx), len(self.batch_idx)
+
+        y_pred = self.my_network(batch_x)
+
+        loss = self.my_loss.calculate_loss(batch_y, y_pred)
+
+        train_loss = np.mean(loss)
+
+        predicted_labels = np.argmax(y_pred, axis=1)
+        true_labels = np.argmax(batch_y, axis=1)
+
+        accuracy = np.mean(predicted_labels == true_labels)
+
+        return train_loss, len(batch_x)
 
 
     def test(self, x):
@@ -187,6 +261,7 @@ class Evaluation_method():
         return accuracy
     
     
+
 
     def test_error(self, x, check_time):
         # Y = self.objective_f.evaluate(x)
@@ -228,7 +303,7 @@ class Evaluation_method():
 
         # Calculate average loss and accuracy
         return (((1 - accuracy), (test_loss/len(self.x_test)), check_time))
-
+    
 
 def finite_diff_grad(f, x, eps=1e-5):
     grad = np.zeros_like(x)
@@ -254,24 +329,28 @@ class BFGSObjectiveWrapper:
         loss, evals = self.eval_meth.evaluate(x)
         return loss, evals
 
+    # def f_gradient(self, x):
+    #     evals = 0
+
+    #     def objective(v):
+    #         nonlocal evals
+    #         loss, n_evals = self.eval_meth.evaluate(v)
+    #         evals += n_evals
+    #         return loss
+
+    #     grad = finite_diff_grad(
+    #         objective,
+    #         x,
+    #         eps=1e-4
+    #     )
+
+    #     self.eval_meth.batch_valid = False
+
+    #     return grad, evals
     def f_gradient(self, x):
-        evals = 0
-
-        def objective(v):
-            nonlocal evals
-            loss, n_evals = self.eval_meth.evaluate(v)
-            evals += n_evals
-            return loss
-
-        grad = finite_diff_grad(
-            objective,
-            x,
-            eps=1e-4
-        )
-
-        self.eval_meth.batch_valid = False
-
+        grad, evals = self.eval_meth.gradient(x)
         return grad, evals
+
 
 def run_bfgs_net(run_id, images, labels, seed=None):
 

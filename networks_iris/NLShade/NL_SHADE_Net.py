@@ -7,7 +7,6 @@ from sklearn.preprocessing import LabelBinarizer
 
 import numpy as np
 from algorithms import globals
-from algorithms import CMAVariation, eswrapper, Eval_wrapper 
 
 import time
 import numpy as np
@@ -225,7 +224,8 @@ def run_nlshade_net(run_id, images, labels, seed=None):
                  (HID_LAYER_1 + 1)*HID_LAYER_2 +
                  (HID_LAYER_2 + 1)*IRIS_OUTPUT)
 
-    pop_size = dimension * 5
+    # pop_size = dimension * 5
+    pop_size = int(100 * np.log10(dimension))
     x0 = np.random.normal(0.0, 0.5, size=(pop_size, dimension))
 
     eval_meth = Evaluation_method(seed, images, labels)
@@ -235,12 +235,16 @@ def run_nlshade_net(run_id, images, labels, seed=None):
         f_objective=f_eval,
         dimension=dimension,
         X=x0,
-        max_fes=MAX_EVALS,
+        objective_limit=MAX_EVALS,
         min_clamp=globals.def_clamps[0],
         max_clamp=globals.def_clamps[1],
-        checkpoints=globals.def_checkpoints
+        checkpoints=globals.def_checkpoints,
+        pop_size=pop_size,
     )
     eval_meth.wrapper = algo
+
+    print("START  :  " , time.strftime("%a, %d %b %Y %H:%M:%S +0000", time.gmtime()))
+
     algo.start()
 
     result = []

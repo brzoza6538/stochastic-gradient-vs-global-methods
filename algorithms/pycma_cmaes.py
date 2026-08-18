@@ -442,12 +442,20 @@ rng = np.random.default_rng(0)
 
 from typing import Union
 
-class Eval_wrapper():
+class Eval_wrapper:
     def __init__(self, f):
         self.f = f
+        self.objective_counter = 0
+
     def evaluate(self, x):
         result, counter = self.f(x)
+
+        self.objective_counter += counter
+
         return result
+
+    def reset_counter(self):
+        self.objective_counter = 0
     
 
 DEFAULT_CMA_OPTIONS: Dict[str, Any] = {
@@ -732,7 +740,6 @@ def lincmaes(
 
 #----------------------------------
 
-
 def eswrapper(
     x: np.ndarray,
     fun: Union[OptFun, CecBenchmark, Eval_wrapper],
@@ -745,10 +752,10 @@ def eswrapper(
     callback: Union[CMAExperimentCallback, None] = None,
     sigma: float = None,
 ) -> CMAResult:
-    """Wraps all variations of the CMA-ES into a single function with a common interface."""
 
     if variation != CMAVariation.VANILLA:
-        assert line_search_interval is not None, "Line search interval must be set."
+        assert line_search_interval is not None
+
         return lincmaes(
             x,
             fun,
@@ -758,7 +765,7 @@ def eswrapper(
             gradient_type=variation,
             gradient_cost=gradient_cost,
             seed=seed,
-            sigma=sigma
+            sigma=sigma,
         )[0]
 
     midpoint_values = []
@@ -766,50 +773,80 @@ def eswrapper(
     best_values = []
     midpoint_solutions = []
     best_solutions = []
-
     times_values = []
+
     start_time = time.perf_counter()
 
     inopts = DEFAULT_CMA_OPTIONS.copy()
+
     if popsize:
         inopts["popsize"] = popsize
-    if maxevals:
-        inopts["maxfevals"] = maxevals
+
+    # if maxevals:
+    #     inopts["maxfevals"] = maxevals
     if seed:
         inopts["seed"] = seed
     
     x = np.clip(x, def_clamps[0], def_clamps[1])  # TODO - inaczej
     sigm = sigma or abs(def_clamps[0] - def_clamps[1]) / 3
+
     es = CMAEvolutionStrategy(x, sigma0=sigm, inopts=inopts)
 
-    while not es.stop():
+    while fun.objective_counter < maxevals:
+
         f = get_function(fun)
-        try:
-            X = es.ask()
-            X = [np.clip(x, def_clamps[0], def_clamps[1]) for x in X]
-            fit_vals = [f(x) for x in X]
 
-            if any(np.any(np.isnan(fx)) or np.any(np.isinf(fx)) for fx in fit_vals):
-                raise ValueError("Function returned NaN or inf")
+        X = es.ask()
 
-            es.tell(X, fit_vals)
-            print(f"++++++++++Epoch {es.countiter}: best f = {es.best.f}")
+        if fun.objective_counter >= maxevals:
+            break
 
+        X = [
+            np.clip(xx, def_clamps[0], def_clamps[1])
+            for xx in X
+        ]
 
-        except ValueError as e:
-            with open("error.csv", "a") as file:
-                file.write(f"{fun},{es.countevals},{es.mean},{variation},{str(e)}\n")
+        fit_vals = []
 
-            if callback is not None:
-                callback(es)
+        for xx in X:
 
-        evals_values.append(es.countevals)
+            if fun.objective_counter >= maxevals:
+                break
+
+            fit_vals.append(f(xx))
+
+        # Jeśli nie mamy pełnej populacji, nie robimy tell().
+        # CMA-ES oczekuje odpowiadającej liczby fitnessów.
+        if len(fit_vals) != len(X):
+            break
+
+        if any(
+            np.any(np.isnan(fx)) or np.any(np.isinf(fx))
+            for fx in fit_vals
+        ):
+            raise ValueError("Function returned NaN or inf")
+
+        es.tell(X, fit_vals)
+
+        if callback is not None:
+            callback(es)
+
+        evals_values.append(fun.objective_counter)
         times_values.append(time.perf_counter() - start_time)
 
+        # UWAGA:
+        # Te wywołania również zwiększają objective_counter!
         midpoint_values.append(f(es.mean))
         best_values.append(f(es.best.x))
         midpoint_solutions.append(es.mean.copy())
         best_solutions.append(es.best.x.copy())
+
+        print(
+            f"Epoch {es.countiter}: "
+            f"CMA evals={es.countevals}, "
+            f"objective evals={fun.objective_counter}, "
+            f"best={es.best.f}"
+        )
 
     return CMAResult(
         fun=fun,
@@ -822,5 +859,4 @@ def eswrapper(
         midpoint_solutions=np.array(midpoint_solutions),
         best_solutions=np.array(best_solutions),
         times=np.array(times_values),
-
     )

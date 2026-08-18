@@ -191,48 +191,97 @@ class BFGS():
 
         return grad
 
+
+
     def start(self):
-        result = None
+        bounds = [(self.min_clamp, self.max_clamp)] * self.dimension
 
-        try:
-            bounds = [(self.min_clamp, self.max_clamp)] * self.dimension
+        while self.objective_counter < self.objective_limit:
 
-            result = minimize(
-                self.wrapped_f_objective,
-                self.x,
-                method='L-BFGS-B',
-                jac=self.wrapped_grad,
-                bounds=bounds,
-                options={
-                    'maxiter': self.objective_limit,
-                    'disp': False
-                },
-            )
+            remaining_fes = self.objective_limit - self.objective_counter
 
-        except StopIteration:
-            pass
+            # duży maxiter - rzeczywisty limit kontrolujemy przez objective_counter
+            maxiter = max(1, remaining_fes)
 
+            try:
+                result = minimize(
+                    self.wrapped_f_objective,
+                    self.x,
+                    method='L-BFGS-B',
+                    jac=self.wrapped_grad,
+                    bounds=bounds,
+                    options={
+                        'maxiter': maxiter,
+                        'disp': False
+                    },
+                )
 
+            except StopIteration:
+                break
+
+            # zachowaj najlepszy punkt
+            if result is not None:
+                self.x = result.x
+
+            # jeśli SciPy zakończyło się naturalnie,
+            # uruchom ponownie z aktualnym punktem
+            if result is not None:
+                print(
+                    "L-BFGS iteration finished:",
+                    result.message,
+                    "FEs:",
+                    self.objective_counter,
+                    "/",
+                    self.objective_limit
+                )
+
+        # końcowy stan
         if self.best_x is not None:
             self.x = self.best_x.copy()
             self.error = self.best_error
 
-        elif result is not None:
-            self.x = result.x
-            self.error = result.fun
+    # def start(self):
+    #     result = None
+
+    #     try:
+    #         bounds = [(self.min_clamp, self.max_clamp)] * self.dimension
+
+    #         result = minimize(
+    #             self.wrapped_f_objective,
+    #             self.x,
+    #             method='L-BFGS-B',
+    #             jac=self.wrapped_grad,
+    #             bounds=bounds,
+    #             options={
+    #                 'maxiter': self.objective_limit,
+    #                 'disp': False
+    #             },
+    #         )
+
+    #     except StopIteration:
+    #         pass
 
 
-        # dopisz brakujące checkpointy
-        for checkpoint in self.checkpoints:
-            if checkpoint not in self.seen_checkpoints:
-                self.log[checkpoint][0] = (0 if self.best_error < self.smallest_val else self.best_error)
-                check_time = time.time()
-                self.log[checkpoint][1] = (check_time - self.start_time)
+    #     if self.best_x is not None:
+    #         self.x = self.best_x.copy()
+    #         self.error = self.best_error
 
-                if self.best_x is not None:
-                    self.help_log[checkpoint].append(self.best_x.copy())
+    #     elif result is not None:
+    #         self.x = result.x
+    #         self.error = result.fun
 
-                self.seen_checkpoints.add(checkpoint)
+
+    #     # dopisz brakujące checkpointy
+    #     for checkpoint in self.checkpoints:
+    #         if checkpoint not in self.seen_checkpoints:
+    #             self.log[checkpoint][0] = (0 if self.best_error < self.smallest_val else self.best_error)
+    #             check_time = time.time()
+    #             self.log[checkpoint][1] = (check_time - self.start_time)
+
+    #             if self.best_x is not None:
+    #                 self.help_log[checkpoint].append(self.best_x.copy())
+
+    #             self.seen_checkpoints.add(checkpoint)
 
 
 
