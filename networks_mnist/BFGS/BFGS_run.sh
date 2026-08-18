@@ -5,8 +5,8 @@
 #SBATCH --mem=30GB
 #SBATCH --time=48:00:00
 #SBATCH -p plgrid
-#SBATCH --output="networks_mnist/BFGS/BFGS_output_2.log"
-#SBATCH --error="networks_mnist/BFGS/BFGS_error_2.log"
+#SBATCH --output="networks_mnist/BFGS/BFGS_output.log"
+#SBATCH --error="networks_mnist/BFGS/BFGS_error.log"
 
 
 

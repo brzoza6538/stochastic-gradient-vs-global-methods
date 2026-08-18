@@ -17,7 +17,7 @@ def_smallest_val = 1e-8
 # dla original_clamps i def_clamps liczymy bez normalizacji 
 # def_clamps = [-100, 100]
 
-# sewitch for networks
+# sewitch for networks #HERE TODO
 def_clamps = [-2, 2]
 original_clamps = [-2, 2]
 # def_clamps = [-1, 1]

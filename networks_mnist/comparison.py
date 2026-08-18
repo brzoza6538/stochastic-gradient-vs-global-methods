@@ -8,7 +8,7 @@ from NLShade.NL_SHADE_Net import *
 from functools import partial
 import time
 
-RUNS = 5
+RUNS = 25
 
 def gather_data(algorithm, algo_name):
     records = []
