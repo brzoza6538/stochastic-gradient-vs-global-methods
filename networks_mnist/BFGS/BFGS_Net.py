@@ -19,6 +19,8 @@ class Evaluation_method():
 
     def __init__(self, seed, images, labels ):
         self.x_train, self.x_test, self.y_train, self.y_test = train_test_split(images, labels, test_size=0.2, random_state=seed) # TODO = add a  seed that changes every time?
+        self.seed = seed
+        np.random.seed(seed)
 
         self.batch_valid = False
         self.batch_idx = None
@@ -48,9 +50,9 @@ class Evaluation_method():
         self.tanh_layer0 = ReLU()
 
         self.fully_connected_layer1 = FullyConnected(input_size=INPUT, output_size=HID_LAYER_1)
-        self.tanh_layer1 = ReLU()
+        self.tanh_layer1 = Tanh()
         self.fully_connected_layer2 = FullyConnected(input_size=HID_LAYER_1, output_size=HID_LAYER_2)
-        self.tanh_layer2 = ReLU()
+        self.tanh_layer2 = Tanh()
         self.fully_connected_layer3 = FullyConnected(input_size=HID_LAYER_2, output_size=MNIST_OUTPUT)
         self.tanh_layer3 = Softmax()
 
@@ -67,6 +69,70 @@ class Evaluation_method():
         self.my_network.compile(loss=self.my_loss)
         self.train_pointer = 0
 
+
+        self.epoch_counter = 0
+
+
+    def gradient(self, x):
+        pointer = 0
+
+        # ustawienie parametrów sieci
+        for layer in self.my_network.layers:
+            if isinstance(layer, FullyConnected):
+                n_weights = layer.input_size * layer.output_size
+
+                layer.weights = x[
+                    pointer:pointer + n_weights
+                ].reshape(layer.input_size, layer.output_size)
+
+                pointer += n_weights
+
+                layer.bias = x[
+                    pointer:pointer + layer.output_size
+                ].reshape(1, layer.output_size)
+
+                pointer += layer.output_size
+
+
+        batch_x = self.x_train[self.batch_idx]
+        batch_y = self.y_train[self.batch_idx]
+
+        # forward
+        y_pred = self.my_network(batch_x)
+
+        # dL/dy
+        loss_gradient = self.my_loss.loss_derivative(
+            batch_y,
+            y_pred
+        )
+
+        # backward
+        for layer in reversed(self.my_network.layers):
+            loss_gradient = layer.backward(loss_gradient)
+
+        # zbierz gradient
+        gradient = []
+
+        for layer in self.my_network.layers:
+            if isinstance(layer, FullyConnected):
+
+                gradient.extend(
+                    layer.weights_derivative.flatten()
+                )
+
+                gradient.extend(
+                    layer.bias_derivative.flatten()
+                )
+
+        # wyzeruj gradienty
+        for layer in self.my_network.layers:
+            if isinstance(layer, FullyConnected):
+                layer.weights_derivative.fill(0)
+                layer.bias_derivative.fill(0)
+
+        self.batch_valid = False
+
+        return np.array(gradient), len(batch_x)*2
 
     def evaluate(self, x):
         # Y = self.objective_f.evaluate(x)
@@ -95,38 +161,69 @@ class Evaluation_method():
 
         # l = int(self.train_pointer) * BATCH_SIZE
 
+        prev = self.batch_idx
         if not self.batch_valid:
-            self.batch_idx = np.random.choice(
-                len(self.x_train),
-                BATCH_SIZE,
-                replace=False
-            )
-            self.batch_valid = True
-            
+
+            if self.batch_idx is None:
+                self.batch_idx = np.random.choice(
+                    len(self.x_train), BATCH_SIZE, replace=False
+                )
+                self.batch_idx = np.sort(self.batch_idx)
+
+            elif self.epoch_counter % 50 == 0:
+                half = BATCH_SIZE // 10
+
+                keep = np.random.choice(self.batch_idx, half, replace=False)
+
+                available = np.setdiff1d(
+                    np.arange(len(self.x_train)),
+                    self.batch_idx
+                )
+
+                new = np.random.choice(available, half, replace=False)
+
+                self.batch_idx = np.sort(np.concatenate([keep, new]))
+
+
+            self.epoch_counter += 1
+
         batch_x = self.x_train[self.batch_idx]
         batch_y = self.y_train[self.batch_idx]
 
 
-        # for x_i, y_true in zip(self.x_train[ l :  l + BATCH_SIZE], self.y_train[ l : l + BATCH_SIZE]):
-        for x_i, y_true in zip(batch_x, batch_y):
-            #x = x.reshape(1, -1)
-            y_pred = self.my_network(x_i)
+        # # # for x_i, y_true in zip(self.x_train[ l :  l + BATCH_SIZE], self.y_train[ l : l + BATCH_SIZE]):
+        # # for x_i, y_true in zip(batch_x, batch_y):
+        # #     #x = x.reshape(1, -1)
+        # #     y_pred = self.my_network(x_i)
 
-            current_loss = self.my_loss.calculate_loss(y_true, y_pred)
-            train_loss += np.mean(current_loss)
+        # #     current_loss = self.my_loss.calculate_loss(y_true, y_pred)
+        # #     train_loss += np.mean(current_loss)
 
-            predicted_label = np.argmax(y_pred)
-            true_label = np.argmax(y_true)
-            correct_predictions += (predicted_label == true_label)
+        # #     predicted_label = np.argmax(y_pred)
+        # #     true_label = np.argmax(y_true)
+        # #     correct_predictions += (predicted_label == true_label)
         
-        accuracy = correct_predictions / len(self.batch_idx)
+        # # accuracy = correct_predictions / len(self.batch_idx)
 
-        print("acccc: ", (accuracy), "lossss: ", (train_loss/len(self.batch_idx)))
+        # # print("acccc: ", (accuracy), "lossss: ", (train_loss/len(self.batch_idx)))
 
-        # Calculate average loss and accuracy
-        return (1 - accuracy), len(self.batch_idx) # HERE learn by acc-loss
+        # # # Calculate average loss and accuracy
+        # # # return (1 - accuracy), len(self.batch_idx) # HERE learn by acc-loss
 
-        # return train_loss / len(self.batch_idx), len(self.batch_idx)
+        # # return train_loss / len(self.batch_idx), len(self.batch_idx)
+
+        y_pred = self.my_network(batch_x)
+
+        loss = self.my_loss.calculate_loss(batch_y, y_pred)
+
+        train_loss = np.mean(loss)
+
+        predicted_labels = np.argmax(y_pred, axis=1)
+        true_labels = np.argmax(batch_y, axis=1)
+
+        accuracy = np.mean(predicted_labels == true_labels)
+
+        return train_loss, len(batch_x)
 
 
     def test(self, x):
@@ -167,7 +264,8 @@ class Evaluation_method():
     
     
 
-    def test_error(self, x):
+
+    def test_error(self, x, check_time):
         # Y = self.objective_f.evaluate(x)
         # error = abs(Y - self.global_min)
         # evaluations_used = 1
@@ -206,8 +304,8 @@ class Evaluation_method():
         print("acccc: ", (accuracy), "lossss: ", (test_loss/(len(self.x_test))))
 
         # Calculate average loss and accuracy
-        return (((1 - accuracy), (test_loss/len(self.x_test))))
-
+        return (((1 - accuracy), (test_loss/len(self.x_test)), check_time))
+    
 
 def finite_diff_grad(f, x, eps=1e-5):
     grad = np.zeros_like(x)
@@ -233,12 +331,27 @@ class BFGSObjectiveWrapper:
         loss, evals = self.eval_meth.evaluate(x)
         return loss, evals
 
+    # def f_gradient(self, x):
+    #     evals = 0
+
+    #     def objective(v):
+    #         nonlocal evals
+    #         loss, n_evals = self.eval_meth.evaluate(v)
+    #         evals += n_evals
+    #         return loss
+
+    #     grad = finite_diff_grad(
+    #         objective,
+    #         x,
+    #         eps=1e-4
+    #     )
+
+    #     self.eval_meth.batch_valid = False
+
+    #     return grad, evals
     def f_gradient(self, x):
-        grad = finite_diff_grad(lambda v: self.eval_meth.evaluate(v)[0], x)
-
-        self.eval_meth.batch_valid = False
-
-        return grad, len(x) + 1
+        grad, evals = self.eval_meth.gradient(x)
+        return grad, evals
 
 
 def run_bfgs_net(run_id, images, labels, seed=None):
@@ -269,8 +382,8 @@ def run_bfgs_net(run_id, images, labels, seed=None):
         (HID_LAYER_1 + 1) * HID_LAYER_2 +
         (HID_LAYER_2 + 1) * MNIST_OUTPUT
     )
-
-    x0 = np.random.normal(CLAMPS[0], CLAMPS[1], size=dimension)
+    np.random.seed(seed)
+    x0 = np.random.normal(0.0, 0.5, size=dimension)
 
     optimizer = BFGS(
         f_objective=wrapper.f_objective,
@@ -292,8 +405,9 @@ def run_bfgs_net(run_id, images, labels, seed=None):
 
     for checkpoint in globals.def_checkpoints:
         if checkpoint in optimizer.log and len(optimizer.log[checkpoint]) > 0:
+            check_time = optimizer.log[checkpoint][-1]
             checkpoint_x = optimizer.help_log[checkpoint][-1]
-            loss_grad = eval_meth.test_error(checkpoint_x) # HERE - switch acc and loss
+            loss_grad = eval_meth.test_error(checkpoint_x, check_time) # HERE - switch acc and loss
 
         else:
             loss_grad = 0

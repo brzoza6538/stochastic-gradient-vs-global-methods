@@ -25,7 +25,7 @@ class AdagradNetwork:
         self.log = {checkpoint: [] for checkpoint in self.checkpoints}
 
         self.E = 1e-8
-
+        self.start_point = time.time()
     def compile(self, loss):
         self.loss = loss
 
@@ -106,7 +106,7 @@ class AdagradNetwork:
                         layer.weights_derivative.fill(0)
                         layer.bias_derivative.fill(0)
 
-                self.counter += len(x_batch)
+                self.counter += len(x_batch) * 2
 
                 for checkpoint in self.checkpoints:
                     checkpoint_fes = int(checkpoint * MAX_EVALS)
@@ -114,7 +114,10 @@ class AdagradNetwork:
                     if checkpoint not in self.seen_checkpoints and self.counter >= checkpoint_fes:
                         loss_grad = self.calculate_loss_checkpoint(x_test, y_test)
                         acc = self.calculate_acc_checkpoint(x_test, y_test)
-                        self.log[checkpoint].append(((1-acc), loss_grad)) # HERE - switch acc and loss
+
+                        check_time = (time.time() - self.start_point)
+                        self.log[checkpoint].append(((1-acc), loss_grad, check_time)) # HERE - switch acc and loss
+
                         self.seen_checkpoints.add(checkpoint)
 
                         if verbose:
@@ -159,11 +162,11 @@ def run_adagrad_net(run_id, images, labels,  seed=None):
 
 
     E_layer = EmbedLayer(input_size=FULL_MNIST, output_size=INPUT)
-    tanh_layer0 = ReLU()
+    tanh_layer0 = Tanh()
     fully_connected_layer1 = FullyConnected(input_size=INPUT, output_size=HID_LAYER_1)
-    tanh_layer1 = ReLU()
+    tanh_layer1 = Tanh()
     fully_connected_layer2 = FullyConnected(input_size=HID_LAYER_1, output_size=HID_LAYER_2)
-    tanh_layer2 = ReLU()
+    tanh_layer2 = Tanh()
     fully_connected_layer3 = FullyConnected(input_size=HID_LAYER_2, output_size=MNIST_OUTPUT)
     tanh_layer3 = Softmax()
 
@@ -172,7 +175,7 @@ def run_adagrad_net(run_id, images, labels,  seed=None):
                                 tanh_layer1, fully_connected_layer2,
                                 tanh_layer2, fully_connected_layer3,
                                 tanh_layer3
-                                ], learning_rate=0.001)
+                                ], learning_rate=0.005)
 
 
     my_loss = Loss(def_loss,def_derivative_loss)

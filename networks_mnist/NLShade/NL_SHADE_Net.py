@@ -7,7 +7,6 @@ from sklearn.preprocessing import LabelBinarizer
 
 import numpy as np
 from algorithms import globals
-from algorithms import CMAVariation, eswrapper, Eval_wrapper 
 
 import time
 import numpy as np
@@ -41,12 +40,12 @@ class Evaluation_method():
         self.y_test = self.lb.transform(self.y_test)
 
         self.E_layer = EmbedLayer(input_size=FULL_MNIST, output_size=INPUT)
-        self.tanh_layer0 = ReLU()
+        self.tanh_layer0 = Tanh()
 
         self.fully_connected_layer1 = FullyConnected(input_size=INPUT, output_size=HID_LAYER_1)
-        self.tanh_layer1 = ReLU()
+        self.tanh_layer1 = Tanh()
         self.fully_connected_layer2 = FullyConnected(input_size=HID_LAYER_1, output_size=HID_LAYER_2)
-        self.tanh_layer2 = ReLU()
+        self.tanh_layer2 = Tanh()
         self.fully_connected_layer3 = FullyConnected(input_size=HID_LAYER_2, output_size=MNIST_OUTPUT)
         self.tanh_layer3 = Softmax()
 
@@ -169,7 +168,7 @@ class Evaluation_method():
         return accuracy
     
 
-    def test_error(self, x):
+    def test_error(self, x, check_time):
         # Y = self.objective_f.evaluate(x)
         # error = abs(Y - self.global_min)
         # evaluations_used = 1
@@ -206,12 +205,12 @@ class Evaluation_method():
         
         accuracy = correct_predictions / len(self.x_test)
         # self.test_pointer += 0.0001 # HERE
-        
+
         print("acccc: ", (accuracy), "lossss: ", (test_loss/len(self.x_test)))
 
         # Calculate average loss and accuracy
         # return (1 - accuracy), BATCH_SIZE
-        return (((1 - accuracy), (test_loss/len(self.x_test)))) # HERE - switch acc and loss
+        return (((1 - accuracy), (test_loss/len(self.x_test)), check_time)) # HERE - switch acc and loss
 
 
 
@@ -228,8 +227,9 @@ def run_nlshade_net(run_id, images, labels, seed=None):
                  (HID_LAYER_1 + 1)*HID_LAYER_2 +
                  (HID_LAYER_2 + 1)*MNIST_OUTPUT)
 
-    pop_size = dimension * 5
-    x0 = np.random.normal(CLAMPS[0], CLAMPS[1], size=(pop_size, dimension))
+    # pop_size = dimension * 5
+    pop_size = int(100 * np.log10(dimension))
+    x0 = np.random.normal(0.0, 0.5, size=(pop_size, dimension))
 
     eval_meth = Evaluation_method(seed, images, labels)
     f_eval = eval_meth.evaluate
@@ -238,10 +238,11 @@ def run_nlshade_net(run_id, images, labels, seed=None):
         f_objective=f_eval,
         dimension=dimension,
         X=x0,
-        max_fes=MAX_EVALS,
+        objective_limit=MAX_EVALS,
         min_clamp=globals.def_clamps[0],
         max_clamp=globals.def_clamps[1],
-        checkpoints=globals.def_checkpoints
+        checkpoints=globals.def_checkpoints,
+        pop_size=pop_size,
     )
     eval_meth.wrapper = algo
 
@@ -256,9 +257,10 @@ def run_nlshade_net(run_id, images, labels, seed=None):
         eval_checkpoint = max_fes * checkpoint
 
         if len(algo.log[checkpoint]) > 0:
-            closest_value = algo.log[checkpoint][-1]
-            checkpoint_x = algo.help_log[checkpoint][-1]
-            loss_grad = eval_meth.test_error(checkpoint_x)
+            closest_value = algo.log[checkpoint][0]
+            check_time = algo.log[checkpoint][1]
+            checkpoint_x = algo.help_log[checkpoint][0]
+            loss_grad = eval_meth.test_error(checkpoint_x, check_time)
 
             result.append({
                 "algorithm": "nlshade",

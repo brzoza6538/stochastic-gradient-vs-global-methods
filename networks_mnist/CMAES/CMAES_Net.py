@@ -46,12 +46,12 @@ class Evaluation_method():
 
 
         self.E_layer = EmbedLayer(input_size=FULL_MNIST, output_size=INPUT)
-        self.tanh_layer0 = ReLU()
+        self.tanh_layer0 = Tanh()
 
         self.fully_connected_layer1 = FullyConnected(input_size=INPUT, output_size=HID_LAYER_1)
-        self.tanh_layer1 = ReLU()
+        self.tanh_layer1 = Tanh()
         self.fully_connected_layer2 = FullyConnected(input_size=HID_LAYER_1, output_size=HID_LAYER_2)
-        self.tanh_layer2 = ReLU()
+        self.tanh_layer2 = Tanh()
         self.fully_connected_layer3 = FullyConnected(input_size=HID_LAYER_2, output_size=MNIST_OUTPUT)
         self.tanh_layer3 = Softmax()
 
@@ -170,7 +170,7 @@ class Evaluation_method():
 
 
 
-    def test_error(self, x):
+    def test_error(self, x, check_time):
         # Y = self.objective_f.evaluate(x)
         # error = abs(Y - self.global_min)
         # evaluations_used = 1
@@ -212,7 +212,7 @@ class Evaluation_method():
 
         # Calculate average loss and accuracy
         # return (1 - accuracy), BATCH_SIZE
-        return (((1 - accuracy), (test_loss/len(self.x_test))))# HERE - switch acc and loss
+        return (((1 - accuracy), (test_loss/len(self.x_test)), check_time))# HERE - switch acc and loss
 
 ##############
 
@@ -227,7 +227,7 @@ def run_cmaes_net(run_id, images, labels, seed=None):
     seed = seed % (2**32)
 
     dimension = ((INPUT + 1)*HID_LAYER_1 + (HID_LAYER_1 + 1)*HID_LAYER_2 + (HID_LAYER_2 + 1)*MNIST_OUTPUT)
-    x0 = np.random.normal(CLAMPS[0], CLAMPS[1], size=dimension)
+    x0 = np.random.normal(0.0, 0.5, size=dimension)
     # switch_interval = 1
     popsize = int(4 + np.floor(3 * np.log(dimension)))
     eval_meth = Evaluation_method(seed, images, labels, popsize)
@@ -256,10 +256,11 @@ def run_cmaes_net(run_id, images, labels, seed=None):
 
         idx_end = max(1, int(len(data.best_values) * checkpoint))
 
-        sol_data = data.best_solutions[np.argmin(data.best_values[:idx_end])]
+        help_i = np.argmin(data.best_values[:idx_end])
+        sol_data = data.best_solutions[help_i]
+        check_time = data.times[help_i]
 
-
-        test_result = eval_meth.test_error(sol_data)
+        test_result = eval_meth.test_error(sol_data, check_time)
 
         result.append({
             "algorithm": "cmaes",

@@ -35,11 +35,11 @@ def run_adam_net(run_id, images, labels,  seed=None):
     y_test = lb.transform(y_test)
 
     E_layer = EmbedLayer(input_size=FULL_MNIST, output_size=INPUT)
-    tanh_layer0 = ReLU()
+    tanh_layer0 = Tanh()
     fully_connected_layer1 = FullyConnected(input_size=INPUT, output_size=HID_LAYER_1)
-    tanh_layer1 = ReLU()
+    tanh_layer1 = Tanh()
     fully_connected_layer2 = FullyConnected(input_size=HID_LAYER_1, output_size=HID_LAYER_2)
-    tanh_layer2 = ReLU()
+    tanh_layer2 = Tanh()
     fully_connected_layer3 = FullyConnected(input_size=HID_LAYER_2, output_size=MNIST_OUTPUT)
     tanh_layer3 = Softmax()
 
@@ -74,4 +74,4 @@ def run_adam_net(run_id, images, labels,  seed=None):
 
 
 
-
+ 
