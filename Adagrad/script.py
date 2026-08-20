@@ -30,7 +30,7 @@ def run_Adagrad(dimension, curr_f, run_id, seed=None, lr=0.001, initial_accumula
     return result
 
 # globals.gather_data(partial(run_Adagrad, lr=0.1, initial_accumulator_value=0.1), "adagrad_clamp_lr=0.1_rho=0.1")
-globals.gather_data(partial(run_Adagrad, lr=1.0, initial_accumulator_value=0.1), "adagrad_curr_updt")
+globals.gather_data(partial(run_Adagrad, lr=0.1, initial_accumulator_value=0.1), "adagrad_curr_updt_2")
 # globals.gather_data(partial(run_Adagrad, lr=1.0), "adagrad_clamp_lr=1.0")
 
 # globals.gather_data(partial(run_Adagrad, lr=0.001), "adagrad_clamp_lr=0.001")

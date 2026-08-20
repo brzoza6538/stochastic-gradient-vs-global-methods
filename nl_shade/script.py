@@ -25,7 +25,7 @@ def run_nl_shade(dimension, curr_f, run_id, seed=None):
         result.append({
             "function": curr_f["shortname"],
             "dimension": dimension,
-            "run": 0,
+            "run": run_id,
             "checkpoint": checkpoint,
             "error": log[checkpoint]
             })
