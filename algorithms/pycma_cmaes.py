@@ -841,12 +841,12 @@ def eswrapper(
         midpoint_solutions.append(es.mean.copy())
         best_solutions.append(es.best.x.copy())
 
-        print(
-            f"Epoch {es.countiter}: "
-            f"CMA evals={es.countevals}, "
-            f"objective evals={fun.objective_counter}, "
-            f"best={es.best.f}"
-        )
+        # print(
+        #     f"Epoch {es.countiter}: "
+        #     f"CMA evals={es.countevals}, "
+        #     f"objective evals={fun.objective_counter}, "
+        #     f"best={es.best.f}"
+        # )
 
     return CMAResult(
         fun=fun,

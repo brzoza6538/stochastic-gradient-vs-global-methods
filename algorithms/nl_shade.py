@@ -162,6 +162,7 @@ class NL_SHADE_RSP_MID():
                 self.log[checkpoint][0] = 0
                 check_time = time.time()
                 self.log[checkpoint][1] = (check_time - self.start_time)
+                self.help_log[checkpoint] = [self.global_best_sol.copy()]
 
                 self.seen_checkpoints.add(checkpoint)
 
