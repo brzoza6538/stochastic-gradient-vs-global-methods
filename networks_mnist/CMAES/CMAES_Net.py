@@ -22,7 +22,8 @@ class Evaluation_method():
         self.popsize = popsize
         self.eval_counter = 0
         self.batch_idx = None 
-
+        self.epoch_counter = 0
+        
         self.x_train, self.x_test, self.y_train, self.y_test = train_test_split(images, labels, test_size=0.2, random_state=seed) # TODO = add a  seed that changes every time?
 
         self.x_train = np.array(self.x_train)
@@ -96,11 +97,31 @@ class Evaluation_method():
              
         # l = int(self.train_pointer) * BATCH_SIZE
         if self.eval_counter % self.popsize == 0:
-            self.batch_idx = np.random.choice(
-                len(self.x_train),
-                BATCH_SIZE,
-                replace=False
-            )
+            self.eval_counter = 0
+            if self.batch_idx is None:
+                self.batch_idx = np.random.choice(
+                    len(self.x_train),
+                    min(BATCH_SIZE, len(self.x_train)),
+                    replace=False
+                )
+                self.batch_idx = np.sort(self.batch_idx)
+
+            elif self.epoch_counter % 100 == 0:
+                self.epoch_counter = 0
+                half = BATCH_SIZE // 5
+
+                keep = np.random.choice(self.batch_idx, half, replace=False)
+
+                available = np.setdiff1d(
+                    np.arange(len(self.x_train)),
+                    self.batch_idx
+                )
+
+                new = np.random.choice(available, half, replace=False)
+
+                self.batch_idx = np.sort(np.concatenate([keep, new]))
+
+            self.epoch_counter += 1
 
         self.eval_counter += 1
 
@@ -121,7 +142,7 @@ class Evaluation_method():
         
         accuracy = correct_predictions / len(self.batch_idx)
 
-        print("acccc: ", (accuracy), "lossss: ", (train_loss/len(self.batch_idx))) # HERE learn by acc-loss
+        # print("acccc: ", (accuracy), "lossss: ", (train_loss/len(self.batch_idx))) # HERE learn by acc-loss
 
         # Calculate average loss and accuracy
         # return (1 - accuracy), len(self.batch_idx)

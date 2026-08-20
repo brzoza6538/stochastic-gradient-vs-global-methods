@@ -62,6 +62,7 @@ class Evaluation_method():
         self.wrapper = None
         self.eval_counter = 0
         self.batch_idx = None
+        self.epoch_counter = 0
 
 
     def evaluate(self,x):
@@ -89,12 +90,32 @@ class Evaluation_method():
 
 
         if self.eval_counter == 0:
-            self.batch_idx = np.random.choice(
-                len(self.x_train),
-                min(BATCH_SIZE, len(self.x_train)),
-                replace=False
-            )
-            
+            if self.batch_idx is None:
+                self.batch_idx = np.random.choice(
+                    len(self.x_train),
+                    min(BATCH_SIZE, len(self.x_train)),
+                    replace=False
+                )
+                self.batch_idx = np.sort(self.batch_idx)
+
+            elif self.epoch_counter % 100 == 0:
+                self.epoch_counter = 0
+                half = BATCH_SIZE // 5
+
+                keep = np.random.choice(self.batch_idx, half, replace=False)
+
+                available = np.setdiff1d(
+                    np.arange(len(self.x_train)),
+                    self.batch_idx
+                )
+
+                new = np.random.choice(available, half, replace=False)
+
+                self.batch_idx = np.sort(np.concatenate([keep, new]))
+
+            self.epoch_counter += 1
+
+
         batch_x = self.x_train[self.batch_idx]
         batch_y = self.y_train[self.batch_idx]
 
@@ -225,7 +246,8 @@ def run_nlshade_net(run_id, images, labels, seed=None):
                  (HID_LAYER_2 + 1)*IRIS_OUTPUT)
 
     # pop_size = dimension * 5
-    pop_size = int(100 * np.log10(dimension))
+    # pop_size = int(4 + np.floor(3 * np.log(dimension)))
+    pop_size = int(20 * np.log10(dimension))    
     x0 = np.random.normal(0.0, 0.5, size=(pop_size, dimension))
 
     eval_meth = Evaluation_method(seed, images, labels)

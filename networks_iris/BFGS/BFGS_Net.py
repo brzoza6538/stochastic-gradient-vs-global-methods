@@ -168,8 +168,8 @@ class Evaluation_method():
                 )
                 self.batch_idx = np.sort(self.batch_idx)
 
-            elif self.epoch_counter % 50 == 0:
-                half = BATCH_SIZE // 10
+            elif self.epoch_counter % 100 == 0:
+                half = BATCH_SIZE // 5
 
                 keep = np.random.choice(self.batch_idx, half, replace=False)
 

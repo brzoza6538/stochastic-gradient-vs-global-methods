@@ -17,7 +17,7 @@ HID_LAYER_2 = 3
 # OUTPUT = 10
 IRIS_OUTPUT = 3
 
-BATCH_SIZE = 80
+BATCH_SIZE = 40
 POP_SIZE = 150
 
 MAX_EVALS = 10000 * 40
@@ -29,10 +29,10 @@ CLAMPS = [-1, 1]
 
 
 def def_loss(val_y : np.ndarray, pred_y : np.ndarray) -> np.ndarray:
-    return((pred_y - val_y)**2)
+    return np.mean((pred_y - val_y) ** 2)
 
 def def_derivative_loss(val_y : np.ndarray, pred_y : np.ndarray) -> np.ndarray:
-    return((2 * (pred_y - val_y)))
+    return 2 * (pred_y - val_y) / val_y.size
 
 
 # def cross_entropy_loss(y_true, y_pred):
@@ -84,7 +84,7 @@ class FullyConnected(Layer):
         self.weights_derivative += np.matmul(self.inputs.T, output_error_derivative)
         input_error_derivative = np.matmul(output_error_derivative, self.weights.T)
 
-        self.bias_derivative += np.sum(output_error_derivative, axis=0, keepdims=True)
+        self.bias_derivative += np.sum(output_error_derivative, axis=0, keepdims=True) * self.input_size
         return input_error_derivative
 
 class Tanh(Layer):
