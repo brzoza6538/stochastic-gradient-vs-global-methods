@@ -46,18 +46,21 @@ class Evaluation_method():
         evaluations_used = 1
         return error, evaluations_used
 
-    def gradient(self, x, E=1e-8):
-        x_scaled = self.scale(x)
-        grad = np.zeros_like(x_scaled)
-        fx = self.objective_f.evaluate(x_scaled)
-        
-        for i in range(len(x_scaled)):
-            x_eps = np.array(x_scaled, copy=True)
+    def gradient(self, x, E=1e-5):
+        x = np.asarray(x, dtype=float)
+
+        fx = self.objective_f.evaluate(self.scale(x))
+        grad = np.zeros_like(x)
+
+
+        for i in range(len(x)):
+            x_eps = x.copy()
             x_eps[i] += E
-            Y = self.objective_f.evaluate(x_eps)
+
+            Y = self.objective_f.evaluate(self.scale(x_eps))
             grad[i] = (Y - fx) / E
         
-        evaluations_used = len(x_scaled) + 1
+        evaluations_used = len(x) + 1
         return grad, evaluations_used
     
 
