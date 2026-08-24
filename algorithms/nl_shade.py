@@ -604,12 +604,14 @@ class NL_SHADE_RSP_MID():
             no_arch_succ = no_arch_succ / no_arch_count
         else:
             no_arch_succ = 0
-
+        
         # Update archive usage probability
+        self.arch_use_prob = arch_succ/(arch_succ + no_arch_succ)
+        self.arch_use_prob = max(0.1, min(0.9, self.arch_use_prob))
+
         if arch_succ == 0:
+
             self.arch_use_prob = 0.5
-        else:
-            self.arch_use_prob = max(0.1, min(0.9, self.arch_use_prob))
 
 
 
