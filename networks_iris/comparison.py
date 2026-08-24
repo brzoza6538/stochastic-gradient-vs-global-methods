@@ -4,6 +4,8 @@ from Adam.Adam_Net import *
 from Adagrad.Adagrad_Net import *
 from BFGS.BFGS_Net import *
 from NLShade.NL_SHADE_Net import *
+from Adam_fair.Adam_fair_Net import *
+from Adagrad_fair.Adagrad_fair_Net import *
 
 from functools import partial
 import time

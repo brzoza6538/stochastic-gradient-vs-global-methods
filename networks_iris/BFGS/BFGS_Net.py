@@ -62,7 +62,7 @@ class Evaluation_method():
                                     ], learning_rate=0.01)
 
 
-        self.my_loss = Loss(def_loss,def_derivative_loss)
+        self.my_loss = Loss(cross_entropy_loss,cross_entropy_derivative)
 
         self.my_network.compile(loss=self.my_loss)
         self.train_pointer = 0
@@ -130,7 +130,7 @@ class Evaluation_method():
 
         self.batch_valid = False
 
-        return np.array(gradient), len(batch_x)*2
+        return np.array(gradient), len(batch_x)
 
     def evaluate(self, x):
         # Y = self.objective_f.evaluate(x)
@@ -159,7 +159,6 @@ class Evaluation_method():
 
         # l = int(self.train_pointer) * BATCH_SIZE
 
-        prev = self.batch_idx
         if not self.batch_valid:
 
             if self.batch_idx is None:
@@ -168,8 +167,9 @@ class Evaluation_method():
                 )
                 self.batch_idx = np.sort(self.batch_idx)
 
-            elif self.epoch_counter % 100 == 0:
-                half = BATCH_SIZE // 5
+            if self.epoch_counter % 25  == 0:
+                self.epoch_counter = 0
+                half = BATCH_SIZE // 10
 
                 keep = np.random.choice(self.batch_idx, half, replace=False)
 
@@ -184,6 +184,8 @@ class Evaluation_method():
 
 
             self.epoch_counter += 1
+            self.batch_valid = True
+            print("EPOCH ", self.epoch_counter)
 
         batch_x = self.x_train[self.batch_idx]
         batch_y = self.y_train[self.batch_idx]
@@ -381,7 +383,7 @@ def run_bfgs_net(run_id, images, labels, seed=None):
         (HID_LAYER_2 + 1) * IRIS_OUTPUT
     )
     np.random.seed(seed)
-    x0 = np.random.normal(0.0, 0.5, size=dimension)
+    x0 = np.random.normal(0.0, 0.1, size=dimension)
 
     optimizer = BFGS(
         f_objective=wrapper.f_objective,
