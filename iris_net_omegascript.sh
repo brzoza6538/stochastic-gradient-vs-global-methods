@@ -5,6 +5,8 @@ sbatch ./networks_iris/Adam/Adam_run.sh
 sbatch ./networks_iris/CMAES/CMAES_run.sh
 sbatch ./networks_iris/BFGS/BFGS_run.sh
 sbatch ./networks_iris/NLShade/NLShade_run.sh
+sbatch ./networks_iris/Adam_fair/Adam_fair_run.sh
+sbatch ./networks_iris/Adagrad_fair/Adagrad_fair_run.sh
 
 # squeue -u $USER
 # scancel 
