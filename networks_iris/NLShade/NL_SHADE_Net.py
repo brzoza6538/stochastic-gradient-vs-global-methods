@@ -100,7 +100,7 @@ class Evaluation_method():
 
             elif self.epoch_counter % 25 == 0:
                 self.epoch_counter = 0
-                half = BATCH_SIZE // 2
+                half = BATCH_SIZE // 10
 
                 keep = np.random.choice(self.batch_idx, half, replace=False)
 
