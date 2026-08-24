@@ -17,10 +17,10 @@ HID_LAYER_2 = 16
 # OUTPUT = 10
 MNIST_OUTPUT = 10
 
-BATCH_SIZE = 256 #56000 #128
+BATCH_SIZE = 256 #256 #56000 #128
 POP_SIZE = 700000
 
-MAX_EVALS = 10000 * 3658 #int(100/2*0.7/2) #3658 (INPUT, time, BATCH)
+MAX_EVALS = 10000 * 100 #100 #3658 #int(100/2*0.7/2) #3658 (INPUT, time, BATCH)
 
 CLAMPS = [-1, 1]
 
@@ -29,19 +29,21 @@ CLAMPS = [-1, 1]
 
 
 
-def def_loss(val_y : np.ndarray, pred_y : np.ndarray) -> np.ndarray:
-    return np.mean((pred_y - val_y) ** 2)
+# def def_loss(val_y : np.ndarray, pred_y : np.ndarray) -> np.ndarray:
+#     return np.mean((pred_y - val_y) ** 2)
 
-def def_derivative_loss(val_y : np.ndarray, pred_y : np.ndarray) -> np.ndarray:
-    return 2 * (pred_y - val_y) / val_y.size
+# def def_derivative_loss(val_y : np.ndarray, pred_y : np.ndarray) -> np.ndarray:
+#     return 2 * (pred_y - val_y) / val_y.size
+
+def cross_entropy_loss(y_true, y_pred):
+    eps = 1e-8
+    y_pred = np.clip(y_pred, eps, 1.0 - eps)
+    return np.mean(-np.sum(y_true * np.log(y_pred), axis=1))
 
 
-# def cross_entropy_loss(y_true, y_pred):
-#     return -np.sum(y_true * np.log(y_pred + 1e-8), axis=1)
-
-# def derivative_cross_entropy(y_true, y_pred):
-#     return (y_pred - y_true) / y_true.shape[0]
-
+def cross_entropy_derivative(y_true, y_pred):
+    batch_size = y_true.shape[0]
+    return (y_pred - y_true) / batch_size
 
 class Layer(ABC):
 
@@ -61,7 +63,7 @@ class FullyConnected(Layer):
         super().__init__()
         self.input_size = input_size
         self.output_size = output_size
-        self.weights = np.random.randn(input_size, output_size) * np.sqrt(2.0 / input_size)
+        self.weights = np.random.randn(input_size, output_size) * np.sqrt(1.0 / input_size)
         self.bias = np.zeros((1, output_size))
 
         self.weights_derivative = np.zeros((input_size, output_size))
@@ -115,26 +117,18 @@ class ReLU(Layer):
         return (self.inputs > 0).astype(float) * output_error_derivative
 
 class Softmax(Layer):
-    def __init__(self) -> None:
+    def __init__(self):
         super().__init__()
         self.outputs = None
 
-    def forward(self, x: np.ndarray) -> np.ndarray:
+    def forward(self, x):
         shifted = x - np.max(x, axis=-1, keepdims=True)
         exp = np.exp(shifted)
         self.outputs = exp / np.sum(exp, axis=-1, keepdims=True)
         return self.outputs
 
-    def backward(self, output_error_derivative: np.ndarray) -> np.ndarray:
-        input_gradient = np.empty_like(output_error_derivative)
-
-        for i, (y, grad) in enumerate(zip(self.outputs, output_error_derivative)):
-            y = y.reshape(-1, 1)
-            jacobian = np.diagflat(y) - y @ y.T
-            input_gradient[i] = jacobian @ grad
-
-        return input_gradient
-
+    def backward(self, output_error_derivative):
+        return output_error_derivative
     
 class Loss:
     def __init__(self, loss_function: callable, loss_function_derivative: callable) -> None:
@@ -267,7 +261,7 @@ class Network:
                         layer.bias_derivative.fill(0)
 
                 # --- Update counters ---
-                self.counter += len(x_batch)*2
+                self.counter += len(x_batch)
 
                 # --- Collect checkpoint data ---
                 for checkpoint in self.checkpoints:
