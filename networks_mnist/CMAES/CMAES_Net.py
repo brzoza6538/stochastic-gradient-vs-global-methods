@@ -64,7 +64,7 @@ class Evaluation_method():
                                     ], learning_rate=0.01)
 
 
-        self.my_loss = Loss(def_loss,def_derivative_loss)
+        self.my_loss = Loss(cross_entropy_loss,cross_entropy_derivative)
 
         self.my_network.compile(loss=self.my_loss)
         # self.train_pointer = 0 # HERE
@@ -106,18 +106,15 @@ class Evaluation_method():
                 )
                 self.batch_idx = np.sort(self.batch_idx)
 
-            elif self.epoch_counter % 100 == 0:
+            if self.epoch_counter % 1 == 0:
                 self.epoch_counter = 0
-                half = BATCH_SIZE // 5
+                change = BATCH_SIZE // 30
 
-                keep = np.random.choice(self.batch_idx, half, replace=False)
+                keep = np.random.choice(self.batch_idx, BATCH_SIZE - change, replace=False)
 
-                available = np.setdiff1d(
-                    np.arange(len(self.x_train)),
-                    self.batch_idx
-                )
+                available = np.setdiff1d(np.arange(len(self.x_train)), self.batch_idx)
 
-                new = np.random.choice(available, half, replace=False)
+                new = np.random.choice(available, change, replace=False)
 
                 self.batch_idx = np.sort(np.concatenate([keep, new]))
 
@@ -248,9 +245,11 @@ def run_cmaes_net(run_id, images, labels, seed=None):
     seed = seed % (2**32)
 
     dimension = ((INPUT + 1)*HID_LAYER_1 + (HID_LAYER_1 + 1)*HID_LAYER_2 + (HID_LAYER_2 + 1)*MNIST_OUTPUT)
-    x0 = np.random.normal(0.0, 0.5, size=dimension)
+    x0 = np.random.normal(0.0, 0.1, size=dimension)
     # switch_interval = 1
     popsize = int(4 + np.floor(3 * np.log(dimension)))
+    # popsize = int(20 * np.log10(dimension))    
+
     eval_meth = Evaluation_method(seed, images, labels, popsize)
     f_eval = Eval_wrapper(eval_meth.evaluate)
 
@@ -263,6 +262,7 @@ def run_cmaes_net(run_id, images, labels, seed=None):
         variation=CMAVariation.VANILLA,
         seed=seed,
         callback=None,
+        sigma=0.1
     )
 
     result = []

@@ -52,7 +52,7 @@ class Evaluation_method():
                                     self.tanh_layer1, self.fully_connected_layer2,
                                     self.tanh_layer2, self.fully_connected_layer3,
                                     self.tanh_layer3
-                                    ], learning_rate=0.001)
+                                    ], learning_rate=0.005)
 
 
         self.my_loss = Loss(cross_entropy_loss,cross_entropy_derivative)
@@ -61,6 +61,7 @@ class Evaluation_method():
         self.train_pointer = 0
 
         self.wrapper = None
+        self.eval_counter = 0
         self.batch_idx = None
         self.epoch_counter = 0
         self.batch_valid = False
@@ -88,6 +89,33 @@ class Evaluation_method():
         train_loss = 0
         correct_predictions = 0
 
+
+
+        if not self.batch_valid:
+
+            if self.batch_idx is None:
+                self.batch_idx = np.random.choice(
+                    len(self.x_train), BATCH_SIZE, replace=False
+                )
+                self.batch_idx = np.sort(self.batch_idx)
+
+            if self.epoch_counter % 100  == 0:
+                self.epoch_counter = 0
+                change = BATCH_SIZE // 30
+
+                keep = np.random.choice(self.batch_idx, BATCH_SIZE - change, replace=False)
+
+                available = np.setdiff1d(np.arange(len(self.x_train)), self.batch_idx)
+
+                new = np.random.choice(available, change, replace=False)
+
+                self.batch_idx = np.sort(np.concatenate([keep, new]))
+
+
+            self.epoch_counter += 1
+            self.batch_valid = True
+            print("EPOCH ", self.epoch_counter)
+
         batch_x = self.x_train[self.batch_idx]
         batch_y = self.y_train[self.batch_idx]
 
@@ -112,7 +140,9 @@ class Evaluation_method():
         # return (1 - accuracy), BATCH_SIZE
 
 
-        self.batch_valid = False
+        self.eval_counter += 1
+
+
 
         return train_loss / len(self.batch_idx), len(self.batch_idx)
 
@@ -139,40 +169,9 @@ class Evaluation_method():
                 pointer += layer.output_size
 
 
-######################################################################
-
-        if not self.batch_valid:
-
-            if self.batch_idx is None:
-                self.batch_idx = np.random.choice(
-                    len(self.x_train), BATCH_SIZE, replace=False
-                )
-                self.batch_idx = np.sort(self.batch_idx)
-
-            if self.epoch_counter % 500  == 0:
-                self.epoch_counter = 0
-                half = BATCH_SIZE // 40
-
-                keep = np.random.choice(self.batch_idx, half, replace=False)
-
-                available = np.setdiff1d(
-                    np.arange(len(self.x_train)),
-                    self.batch_idx
-                )
-
-                new = np.random.choice(available, half, replace=False)
-
-                self.batch_idx = np.sort(np.concatenate([keep, new]))
-
-
-            self.epoch_counter += 1
-            self.batch_valid = True
-
-            print("EPOCH ", self.epoch_counter)
-
         batch_x = self.x_train[self.batch_idx]
         batch_y = self.y_train[self.batch_idx]
-######################################################################
+
         # forward
         y_pred = self.my_network(batch_x)
 
@@ -205,6 +204,8 @@ class Evaluation_method():
             if isinstance(layer, FullyConnected):
                 layer.weights_derivative.fill(0)
                 layer.bias_derivative.fill(0)
+
+        self.batch_valid = False
 
         return np.array(gradient), len(batch_x)
 
