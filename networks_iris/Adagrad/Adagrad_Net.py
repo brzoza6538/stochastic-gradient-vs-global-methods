@@ -106,7 +106,7 @@ class AdagradNetwork:
                         layer.weights_derivative.fill(0)
                         layer.bias_derivative.fill(0)
 
-                self.counter += len(x_batch) * 2
+                self.counter += len(x_batch)
 
                 for checkpoint in self.checkpoints:
                     checkpoint_fes = int(checkpoint * MAX_EVALS)
@@ -173,7 +173,7 @@ def run_adagrad_net(run_id, images, labels,  seed=None):
                                 tanh_layer1, fully_connected_layer2,
                                 tanh_layer2, fully_connected_layer3,
                                 tanh_layer3
-                                ], learning_rate=1.0)
+                                ], learning_rate=0.05)
 
 
     my_loss = Loss(cross_entropy_loss,cross_entropy_derivative)

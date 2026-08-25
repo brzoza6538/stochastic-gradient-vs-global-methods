@@ -50,7 +50,7 @@ class Evaluation_method():
                                     self.tanh_layer1, self.fully_connected_layer2,
                                     self.tanh_layer2, self.fully_connected_layer3,
                                     self.tanh_layer3
-                                    ], learning_rate=0.01)
+                                    ], learning_rate=0.005)
 
 
         self.my_loss = Loss(cross_entropy_loss,cross_entropy_derivative)
@@ -97,18 +97,15 @@ class Evaluation_method():
                 )
                 self.batch_idx = np.sort(self.batch_idx)
 
-            if self.epoch_counter % 25  == 0:
+            if self.epoch_counter % 100  == 0:
                 self.epoch_counter = 0
-                half = BATCH_SIZE // 10
+                change = BATCH_SIZE // 30
 
-                keep = np.random.choice(self.batch_idx, half, replace=False)
+                keep = np.random.choice(self.batch_idx, BATCH_SIZE - change, replace=False)
 
-                available = np.setdiff1d(
-                    np.arange(len(self.x_train)),
-                    self.batch_idx
-                )
+                available = np.setdiff1d(np.arange(len(self.x_train)), self.batch_idx)
 
-                new = np.random.choice(available, half, replace=False)
+                new = np.random.choice(available, change, replace=False)
 
                 self.batch_idx = np.sort(np.concatenate([keep, new]))
 

@@ -104,18 +104,15 @@ class Evaluation_method():
                 )
                 self.batch_idx = np.sort(self.batch_idx)
 
-            if self.epoch_counter % 25 == 0:
+            if self.epoch_counter % 1 == 0:
                 self.epoch_counter = 0
-                half = BATCH_SIZE // 10
+                change = BATCH_SIZE // 30
 
-                keep = np.random.choice(self.batch_idx, half, replace=False)
+                keep = np.random.choice(self.batch_idx, BATCH_SIZE - change, replace=False)
 
-                available = np.setdiff1d(
-                    np.arange(len(self.x_train)),
-                    self.batch_idx
-                )
+                available = np.setdiff1d(np.arange(len(self.x_train)), self.batch_idx)
 
-                new = np.random.choice(available, half, replace=False)
+                new = np.random.choice(available, change, replace=False)
 
                 self.batch_idx = np.sort(np.concatenate([keep, new]))
 
@@ -263,7 +260,7 @@ def run_cmaes_net(run_id, images, labels, seed=None):
         variation=CMAVariation.VANILLA,
         seed=seed,
         callback=None,
-        # sigma=0.05
+        sigma=0.1
     )
 
     result = []

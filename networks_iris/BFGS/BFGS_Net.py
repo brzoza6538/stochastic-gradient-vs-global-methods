@@ -159,6 +159,7 @@ class Evaluation_method():
 
         # l = int(self.train_pointer) * BATCH_SIZE
 
+
         if not self.batch_valid:
 
             if self.batch_idx is None:
@@ -167,20 +168,19 @@ class Evaluation_method():
                 )
                 self.batch_idx = np.sort(self.batch_idx)
 
-            if self.epoch_counter % 25  == 0:
+            if self.epoch_counter % 500  == 0:
                 self.epoch_counter = 0
-                half = BATCH_SIZE // 10
+                change = BATCH_SIZE // 30
+                print("SWITCH")
 
-                keep = np.random.choice(self.batch_idx, half, replace=False)
+                keep = np.random.choice(self.batch_idx, BATCH_SIZE - change, replace=False)
 
-                available = np.setdiff1d(
-                    np.arange(len(self.x_train)),
-                    self.batch_idx
-                )
+                available = np.setdiff1d(np.arange(len(self.x_train)), self.batch_idx)
 
-                new = np.random.choice(available, half, replace=False)
+                new = np.random.choice(available, change, replace=False)
 
                 self.batch_idx = np.sort(np.concatenate([keep, new]))
+
 
 
             self.epoch_counter += 1
@@ -410,7 +410,7 @@ def run_bfgs_net(run_id, images, labels, seed=None):
             loss_grad = eval_meth.test_error(checkpoint_x, check_time) # HERE - switch acc and loss
 
         else:
-            loss_grad = 0
+            loss_grad = None
 
         result.append({
             "algorithm": "bfgs",
