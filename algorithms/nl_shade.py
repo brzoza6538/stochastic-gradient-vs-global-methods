@@ -68,7 +68,8 @@ class NL_SHADE_RSP_MID():
         self.curr_arch_size = 0
 
         if(X is None):
-            self.pop = np.array([[random.uniform(self.min_clamp, self.max_clamp) for _ in range(self.dimension)] for _ in range(self.pop_size)])
+            self.pop = np.array([[random.normalvariate(0, 0.1) for _ in range(self.dimension)] for _ in range(self.pop_size)])
+            np.clip(self.pop, self.min_clamp, self.max_clamp)
         else:
             self.pop = X
         self.archive = np.array([[None for _ in range(self.dimension)] for _ in range(self.arch_size)])
@@ -458,7 +459,7 @@ class NL_SHADE_RSP_MID():
                         used_repair = False
                         for j in range(self.dimension):
                             if self.min_clamp > pop_tmp[curr_indx][j] or self.max_clamp < pop_tmp[curr_indx][j]:
-                                pop_tmp[curr_indx][j] = np.random.uniform(self.min_clamp, self.max_clamp)
+                                pop_tmp[curr_indx][j] = np.clip(random.normalvariate(0, 0.1), self.min_clamp, self.max_clamp)
 
                     num_of_trials += 1
 
@@ -536,7 +537,7 @@ class NL_SHADE_RSP_MID():
                     self.mean_indiv = best_centroids[k].copy()
                     for j in range(self.dimension):
                         if self.min_clamp > self.mean_indiv[j] or self.max_clamp < self.mean_indiv[j]:
-                            self.mean_indiv[j] = random.uniform(self.min_clamp, self.max_clamp)
+                            self.mean_indiv[j] = np.clip(random.normalvariate(0, 0.1), self.min_clamp, self.max_clamp)
                     fit_mean, evals_used = self.f_objective(self.mean_indiv)
                     self.objective_counter += evals_used
                     if bestCandFit is None or fit_mean < bestCandFit:
@@ -549,7 +550,7 @@ class NL_SHADE_RSP_MID():
                 self.mean_indiv = np.mean(pop_tmp, axis=0)
                 for j in range(self.dimension):
                     if self.min_clamp > self.mean_indiv[j] or self.max_clamp < self.mean_indiv[j]:
-                        self.mean_indiv[j] = random.uniform(self.min_clamp, self.max_clamp)
+                        self.mean_indiv[j] = np.clip(random.normalvariate(0, 0.1), self.min_clamp, self.max_clamp)
                 fit_mean, evals_used = self.f_objective(self.mean_indiv)
                 self.objective_counter += evals_used
                 if self.global_best_fit is None or fit_mean < self.global_best_fit:
@@ -606,7 +607,10 @@ class NL_SHADE_RSP_MID():
             no_arch_succ = 0
         
         # Update archive usage probability
-        self.arch_use_prob = arch_succ/(arch_succ + no_arch_succ)
+        if (arch_succ + no_arch_succ) != 0:
+            self.arch_use_prob = arch_succ/(arch_succ + no_arch_succ)
+        else:
+            self.arch_use_prob = 0
         self.arch_use_prob = max(0.1, min(0.9, self.arch_use_prob))
 
         if arch_succ == 0:

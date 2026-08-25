@@ -45,6 +45,8 @@ class CMAES:
 
         if mean is None:
             self.m = mean or np.random.uniform(self.min_clamp, self.max_clamp, size=self.dimension)
+            np.clip(self.m, self.min_clamp, self.max_clamp)
+
         else:
             self.m = mean
         self.objective_limit = objective_limit or self.dimension * self.max_fes
