@@ -18,10 +18,12 @@ def_smallest_val = 1e-8
 # def_clamps = [-100, 100]
 
 # sewitch for networks #HERE TODO
-def_clamps = [-2, 2]
-original_clamps = [-2, 2]
+def_clamps = [-1, 1]
+original_clamps = [-1, 1]
 # def_clamps = [-1, 1]
 # original_clamps = [-100, 100]
+
+def_normal_delta = 0.1
 
 class Evaluation_method():
     def __init__(self, tested_f, dimension):
