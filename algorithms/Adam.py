@@ -50,8 +50,13 @@ class Adam():
         self.smallest_val = smallest_val
 
         self.log = {checkpoint: [0, 0] for checkpoint in self.checkpoints}
+        self.help_log = {checkpoint: [] for checkpoint in self.checkpoints}
+
         self.objective_counter = 0
         self.error = None
+        self.best_error = np.inf
+        self.best_x = None
+
         self.seen_checkpoints = set()
 
         if(objective_limit is None):
@@ -88,6 +93,11 @@ class Adam():
         self.x = np.clip(self.x, self.min_clamp, self.max_clamp)
 
         self.error, evals_used = self.f_objective(self.x) 
+
+        if self.error < self.best_error:
+            self.best_error = self.error
+            self.best_x = self.x.copy()
+
         self.objective_counter += evals_used
 
 
@@ -95,7 +105,7 @@ class Adam():
         for checkpoint in self.checkpoints:
             checkpoint_fes = int(checkpoint * self.objective_limit)
             
-            if self.error < self.smallest_val and self.objective_counter <= checkpoint_fes:
+            if self.best_error < self.smallest_val and self.objective_counter <= checkpoint_fes:
                 self.log[checkpoint][0] = 0
                 check_time = time.time()
                 self.log[checkpoint][1] = (check_time - self.start_time)
@@ -103,11 +113,16 @@ class Adam():
                 self.seen_checkpoints.add(checkpoint)
 
             if checkpoint not in self.seen_checkpoints and self.objective_counter >= checkpoint_fes:
-                self.log[checkpoint][0] = (0 if self.error < self.smallest_val else self.error)
+                self.log[checkpoint][0] = (0 if self.best_error < self.smallest_val else self.best_error)
                 check_time = time.time()
                 self.log[checkpoint][1] = (check_time - self.start_time)
 
                 self.seen_checkpoints.add(checkpoint)
+
+                if self.best_x is not None:
+                    self.help_log[checkpoint] = [(self.best_x.copy())]
+
+
 
     def return_epoch_log(self):
         return(self.objective_counter, self.error)
