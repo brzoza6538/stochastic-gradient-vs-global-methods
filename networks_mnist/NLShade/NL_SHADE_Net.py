@@ -96,16 +96,16 @@ class Evaluation_method():
             if self.batch_idx is None:
                 self.batch_idx = np.random.choice(
                     len(self.x_train),
-                    min(BATCH_SIZE, len(self.x_train)),
+                    min(EVAL_BATCH_SIZE, len(self.x_train)),
                     replace=False
                 )
                 self.batch_idx = np.sort(self.batch_idx)
 
-            elif self.epoch_counter % 250 == 0:
+            elif self.epoch_counter % BATCH_SIZE == 0:
                 self.epoch_counter = 0
-                change = BATCH_SIZE // 30
+                change = EVAL_BATCH_SIZE // BATCH_SWITCH
 
-                keep = np.random.choice(self.batch_idx, BATCH_SIZE - change, replace=False)
+                keep = np.random.choice(self.batch_idx, EVAL_BATCH_SIZE - change, replace=False)
 
                 available = np.setdiff1d(np.arange(len(self.x_train)), self.batch_idx)
 
@@ -240,6 +240,7 @@ def run_nlshade_net(run_id, images, labels, seed=None):
 
     seed = seed or int((time.time() * 1000) + run_id)
     seed = seed % (2**32)
+    np.random.seed(seed)
 
     dimension = ((INPUT + 1)*HID_LAYER_1 +
                  (HID_LAYER_1 + 1)*HID_LAYER_2 +
@@ -248,7 +249,7 @@ def run_nlshade_net(run_id, images, labels, seed=None):
     # pop_size = dimension * 5
     # pop_size = int(4 + np.floor(3 * np.log(dimension)))
     pop_size = int(20 * np.log10(dimension))    
-    x0 = np.random.normal(0.0, 0.1, size=(pop_size, dimension))
+    x0 = np.clip(np.random.normal(0.0, globals.def_normal_delta, size=(pop_size, dimension)), CLAMPS[0], CLAMPS[1])
 
     eval_meth = Evaluation_method(seed, images, labels)
     f_eval = eval_meth.evaluate
@@ -271,6 +272,10 @@ def run_nlshade_net(run_id, images, labels, seed=None):
 
     result = []
     max_fes = MAX_EVALS
+    weight_log = (
+        f"run={run_id}\n"
+        f"checkpoint\tmin\t\tmax\t\tmean\t\tstd\t\t|x|mean\n"
+    )
 
     for checkpoint in globals.def_checkpoints:
         eval_checkpoint = max_fes * checkpoint
@@ -281,6 +286,15 @@ def run_nlshade_net(run_id, images, labels, seed=None):
             checkpoint_x = algo.help_log[checkpoint][0]
             loss_grad = eval_meth.test_error(checkpoint_x, check_time)
 
+            weight_log += (
+                f"{checkpoint:.2f}\t\t"
+                f"{np.min(checkpoint_x):.4f}\t\t"
+                f"{np.max(checkpoint_x):.4f}\t\t"
+                f"{np.mean(checkpoint_x):.4f}\t\t"
+                f"{np.std(checkpoint_x):.4f}\t\t"
+                f"{np.mean(np.abs(checkpoint_x)):.4f}\n"
+            )
+            
             result.append({
                 "algorithm": "nlshade",
                 "dimension": dimension,
@@ -297,6 +311,10 @@ def run_nlshade_net(run_id, images, labels, seed=None):
                 "checkpoint": checkpoint,
                 "error": [(None, None)]#result[-1]["error"]]
             })
+
+    print("################################################")
+    print(weight_log)
+    print("################################################")
 
     print(run_id)
     return result

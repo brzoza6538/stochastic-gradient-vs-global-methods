@@ -70,8 +70,8 @@ class AdagradNetwork:
             x_train_shuffled = x_train[permutation]
             y_train_shuffled = y_train[permutation]
 
-            for start_idx in range(0, num_samples, BATCH_SIZE):
-                end_idx = min(start_idx + BATCH_SIZE, num_samples)
+            for start_idx in range(0, num_samples, EVAL_BATCH_SIZE):
+                end_idx = min(start_idx + EVAL_BATCH_SIZE, num_samples)
 
                 x_batch = x_train_shuffled[start_idx:end_idx]
                 y_batch = y_train_shuffled[start_idx:end_idx]
@@ -138,10 +138,7 @@ def run_adagrad_net(run_id, images, labels,  seed=None):
 
     seed = seed or int((time.time() * 1000) + run_id)  # Generujemy nasiono na podstawie czasu i run_id
     seed = seed % (2**32)
-
-    print("---------seeed-----------")
-    print(seed)
-    print("---------seeed-----------")
+    np.random.seed(seed)
 
     x_train, x_test, y_train, y_test = train_test_split(images, labels, test_size=0.2, random_state=seed)
 

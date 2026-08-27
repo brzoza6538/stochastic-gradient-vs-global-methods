@@ -101,16 +101,16 @@ class Evaluation_method():
             if self.batch_idx is None:
                 self.batch_idx = np.random.choice(
                     len(self.x_train),
-                    min(BATCH_SIZE, len(self.x_train)),
+                    min(EVAL_BATCH_SIZE, len(self.x_train)),
                     replace=False
                 )
                 self.batch_idx = np.sort(self.batch_idx)
 
-            if self.epoch_counter % 1 == 0:
+            if self.epoch_counter % BATCH_SIZE == 0:
                 self.epoch_counter = 0
-                change = BATCH_SIZE // 30
+                change = EVAL_BATCH_SIZE // BATCH_SWITCH
 
-                keep = np.random.choice(self.batch_idx, BATCH_SIZE - change, replace=False)
+                keep = np.random.choice(self.batch_idx, EVAL_BATCH_SIZE - change, replace=False)
 
                 available = np.setdiff1d(np.arange(len(self.x_train)), self.batch_idx)
 
@@ -243,9 +243,10 @@ def run_cmaes_net(run_id, images, labels, seed=None):
 
     seed = seed or int((time.time() * 1000) + run_id)  # Generujemy nasiono na podstawie czasu i run_id
     seed = seed % (2**32)
+    np.random.seed(seed)
 
     dimension = ((INPUT + 1)*HID_LAYER_1 + (HID_LAYER_1 + 1)*HID_LAYER_2 + (HID_LAYER_2 + 1)*MNIST_OUTPUT)
-    x0 = np.random.normal(0.0, 0.1, size=dimension)
+    x0 = np.clip(np.random.normal(0.0, globals.def_normal_delta, size=dimension), CLAMPS[0], CLAMPS[1])
     # switch_interval = 1
     popsize = int(4 + np.floor(3 * np.log(dimension)))
     # popsize = int(20 * np.log10(dimension))    
@@ -268,12 +269,14 @@ def run_cmaes_net(run_id, images, labels, seed=None):
     result = []
 
     max_fes = MAX_EVALS
+    weight_log = (
+        f"run={run_id}\n"
+        f"checkpoint\tmin\t\tmax\t\tmean\t\tstd\t\t|x|mean\n"
+    )
 
     for checkpoint in globals.def_checkpoints:
 
         print("CHECKPOINT :", checkpoint)
-
-
 
         idx_end = max(1, int(len(data.best_values) * checkpoint))
 
@@ -283,6 +286,15 @@ def run_cmaes_net(run_id, images, labels, seed=None):
 
         test_result = eval_meth.test_error(sol_data, check_time)
 
+        weight_log += (
+            f"{checkpoint:.2f}\t\t"
+            f"{np.min(sol_data):.4f}\t\t"
+            f"{np.max(sol_data):.4f}\t\t"
+            f"{np.mean(sol_data):.4f}\t\t"
+            f"{np.std(sol_data):.4f}\t\t"
+            f"{np.mean(np.abs(sol_data)):.4f}\n"
+        )
+
         result.append({
             "algorithm": "cmaes",
             "dimension": dimension,
@@ -290,6 +302,10 @@ def run_cmaes_net(run_id, images, labels, seed=None):
             "checkpoint": checkpoint,
             "error": [test_result]
         })    
-    print(run_id)
+
+    print("################################################")
+    print(weight_log)
+    print("################################################")
+
     return result
 
