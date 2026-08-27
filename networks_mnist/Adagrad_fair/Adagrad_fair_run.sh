@@ -5,8 +5,8 @@
 #SBATCH --mem=3GB
 #SBATCH --time=24:00:00
 #SBATCH -p plgrid
-#SBATCH --output="networks_mnist/Adagrad_fair/adagrad_output.log"
-#SBATCH --error="networks_mnist/Adagrad_fair/adagrad_error.log"
+#SBATCH --output="networks_mnist/Adagrad_fair/adagrad_output_1.log"
+#SBATCH --error="networks_mnist/Adagrad_fair/adagrad_error_1.log"
 
 
 

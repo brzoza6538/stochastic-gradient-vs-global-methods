@@ -7,4 +7,4 @@ mnist = fetch_openml('mnist_784')
 images = mnist.data.to_numpy(dtype=np.float32)[:POP_SIZE]
 labels = mnist.target.to_numpy(dtype=np.int64)[:POP_SIZE]
 
-gather_data(partial(run_adam_net, images=images, labels=labels), "adam_aclosstim_tanh_updt_2")
+gather_data(partial(run_adam_net, images=images, labels=labels), "adam_New_20")

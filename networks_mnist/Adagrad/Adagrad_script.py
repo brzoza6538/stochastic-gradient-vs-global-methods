@@ -7,4 +7,4 @@ mnist = fetch_openml('mnist_784')
 images = mnist.data.to_numpy(dtype=np.float32)[:POP_SIZE]
 labels = mnist.target.to_numpy(dtype=np.int64)[:POP_SIZE]
 
-gather_data(partial(run_adagrad_net, images=images, labels=labels), "ada_aclosstim_tanh_updt_3")
+gather_data(partial(run_adagrad_net, images=images, labels=labels), "ada_New_20")
