@@ -304,7 +304,7 @@ def run_adagrad_fair_net(run_id, images, labels, seed=None):
     dimension = ((FULL_IRIS + 1)*HID_LAYER_1 +
                  (HID_LAYER_1 + 1)*HID_LAYER_2 +
                  (HID_LAYER_2 + 1)*IRIS_OUTPUT)
-    x0 = np.random.normal(0.0, 0.1, size=(dimension))
+    x0 = np.clip(np.random.normal(0.0, globals.def_normal_delta, size=(dimension)), CLAMPS[0], CLAMPS[1])
 
     eval_meth = Evaluation_method(seed, images, labels)
     f_eval = eval_meth.evaluate
