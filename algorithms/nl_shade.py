@@ -7,8 +7,16 @@ from algorithms import *
 from sklearn.exceptions import ConvergenceWarning
 import warnings
 
-F_INIT = 0.2
-CR_INIT = 0.2
+############################################
+# CHANGED - WHYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY
+# # OG
+# F_INIT = 0.2
+# CR_INIT = 0.2
+# NEW 
+F_INIT = 0.5
+CR_INIT = 0.5
+#############
+
 RETRIES = 25
 RESAMPLING = True
 MAX_NUM_OF_TRIALS = 20
@@ -56,6 +64,7 @@ class NL_SHADE_RSP_MID():
         self.objective_limit = objective_limit or self.dimension * self.max_fes
         self.objective_counter = 0
 
+# CHANGED - WHYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY
 # TODO really * 5?
         self.pop_size = pop_size or self.dimension * 5
         self.min_pop_size = 4
@@ -68,7 +77,7 @@ class NL_SHADE_RSP_MID():
         self.curr_arch_size = 0
 
         if(X is None):
-            self.pop = np.array([[random.normalvariate(0, 0.1) for _ in range(self.dimension)] for _ in range(self.pop_size)])
+            self.pop = np.array([[random.normalvariate(0, def_normal_delta) for _ in range(self.dimension)] for _ in range(self.pop_size)])
             np.clip(self.pop, self.min_clamp, self.max_clamp)
         else:
             self.pop = X
@@ -364,10 +373,17 @@ class NL_SHADE_RSP_MID():
             F = F_generated[curr_indx]
             dim_to_crossover = random.randrange(self.dimension)
             Cr = Cr_generated[self.backindexes[curr_indx]]
-            # HERE
+        # HERE A FUCKING WEIRD IDEA
+        # ONLY IN THE SECOND HALF CR_TO_USE STARTS GOING FROM ZERO
+        # 1/40 wymairów - spoko, dla sieci? 1/3568 wymiarów? to nic
+        # 
             Cr_to_use = 0
-            if self.objective_counter > (0.5 * self.objective_limit):
-                Cr_to_use = (self.objective_counter/self.objective_limit - 0.5) * 2
+        # OG
+            # if self.objective_counter > (0.5 * self.objective_limit):
+            #     Cr_to_use = (self.objective_counter/self.objective_limit - 0.5) * 2
+        # CHANGED - WHYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY
+            Cr_to_use = Cr
+        ############
 
             if cross_exponential == False:
                 for j in range(self.dimension):
@@ -402,7 +418,7 @@ class NL_SHADE_RSP_MID():
 
                         curr_memory_indx = random.randrange(self.memory_size)
 
-                        Cr = min(1.0, max(0.0, random.normalvariate(self.Cr_memory[curr_memory_indx],0.1)))
+                        Cr = min(1.0, max(0.0, random.normalvariate(self.Cr_memory[curr_memory_indx],def_normal_delta)))
                         while True:
                             F = min(1.0, np.random.standard_cauchy() * self.F_memory[curr_memory_indx] + 0.1)
                             if(F > 0):
@@ -434,9 +450,17 @@ class NL_SHADE_RSP_MID():
                     if(num_of_trials<=NUM_OF_TR_WITHOUT_F_HANGE):
                         Cr = Cr_generated[self.backindexes[curr_indx]]
 
+                # HERE A FUCKING WEIRD IDEA 
+                # ONLY IN THE SECOND HALF CR_TO_USE STARTS GOING FROM ZERO
+                # 1/40 wymairów - spoko, dla sieci? 1/3568 wymiarów? to nic
+                # 
                     Cr_to_use = 0
-                    if self.objective_counter > (0.5 * self.objective_limit):
-                        Cr_to_use = (self.objective_counter/self.objective_limit - 0.5) * 2
+                # OG
+                    # if self.objective_counter > (0.5 * self.objective_limit):
+                    #     Cr_to_use = (self.objective_counter/self.objective_limit - 0.5) * 2
+                # CHANGED - WHYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY
+                    Cr_to_use = Cr
+                ############
 
                     if cross_exponential == False:
                         for j in range(self.dimension):
@@ -459,7 +483,7 @@ class NL_SHADE_RSP_MID():
                         used_repair = False
                         for j in range(self.dimension):
                             if self.min_clamp > pop_tmp[curr_indx][j] or self.max_clamp < pop_tmp[curr_indx][j]:
-                                pop_tmp[curr_indx][j] = np.clip(random.normalvariate(0, 0.1), self.min_clamp, self.max_clamp)
+                                pop_tmp[curr_indx][j] = np.clip(random.normalvariate(0, def_normal_delta), self.min_clamp, self.max_clamp)
 
                     num_of_trials += 1
 
@@ -484,7 +508,20 @@ class NL_SHADE_RSP_MID():
 
 # ##################### ^COUNT LIMITS end 
             fit_tmp[curr_indx], evals_used = self.f_objective(pop_tmp[curr_indx])
+
             self.objective_counter += evals_used
+
+            if (self.objective_counter % 10000 == 0):
+                print(
+                    "-------------------------------------------------",
+                    f"{self.seen_checkpoints}",
+                    f"{self.objective_counter} / {self.max_fes}",
+                    "F mean:", np.mean(self.F_memory),
+                    "F std:", np.std(self.F_memory),
+                    "CR mean:", np.mean(self.Cr_memory),
+                    "CR std:", np.std(self.Cr_memory),
+                    "-------------------------------------------------",
+                )
 
             if(self.global_best_fit is None or fit_tmp[curr_indx] < self.global_best_fit):
                 self.global_best_fit = fit_tmp[curr_indx]
@@ -537,7 +574,7 @@ class NL_SHADE_RSP_MID():
                     self.mean_indiv = best_centroids[k].copy()
                     for j in range(self.dimension):
                         if self.min_clamp > self.mean_indiv[j] or self.max_clamp < self.mean_indiv[j]:
-                            self.mean_indiv[j] = np.clip(random.normalvariate(0, 0.1), self.min_clamp, self.max_clamp)
+                            self.mean_indiv[j] = np.clip(random.normalvariate(0, def_normal_delta), self.min_clamp, self.max_clamp)
                     fit_mean, evals_used = self.f_objective(self.mean_indiv)
                     self.objective_counter += evals_used
                     if bestCandFit is None or fit_mean < bestCandFit:
@@ -550,7 +587,7 @@ class NL_SHADE_RSP_MID():
                 self.mean_indiv = np.mean(pop_tmp, axis=0)
                 for j in range(self.dimension):
                     if self.min_clamp > self.mean_indiv[j] or self.max_clamp < self.mean_indiv[j]:
-                        self.mean_indiv[j] = np.clip(random.normalvariate(0, 0.1), self.min_clamp, self.max_clamp)
+                        self.mean_indiv[j] = np.clip(random.normalvariate(0, def_normal_delta), self.min_clamp, self.max_clamp)
                 fit_mean, evals_used = self.f_objective(self.mean_indiv)
                 self.objective_counter += evals_used
                 if self.global_best_fit is None or fit_mean < self.global_best_fit:
