@@ -88,32 +88,6 @@ class Evaluation_method():
         correct_predictions = 0
 
 
-
-        if not self.batch_valid:
-
-            if self.batch_idx is None:
-                self.batch_idx = np.random.choice(
-                    len(self.x_train), BATCH_SIZE, replace=False
-                )
-                self.batch_idx = np.sort(self.batch_idx)
-
-            if self.epoch_counter % 100  == 0:
-                self.epoch_counter = 0
-                change = BATCH_SIZE // 30
-
-                keep = np.random.choice(self.batch_idx, BATCH_SIZE - change, replace=False)
-
-                available = np.setdiff1d(np.arange(len(self.x_train)), self.batch_idx)
-
-                new = np.random.choice(available, change, replace=False)
-
-                self.batch_idx = np.sort(np.concatenate([keep, new]))
-
-
-            self.epoch_counter += 1
-            self.batch_valid = True
-            print("EPOCH ", self.epoch_counter)
-
         batch_x = self.x_train[self.batch_idx]
         batch_y = self.y_train[self.batch_idx]
 
@@ -139,6 +113,7 @@ class Evaluation_method():
 
 
         self.eval_counter += 1
+        self.batch_valid = False
 
 
 
@@ -166,6 +141,30 @@ class Evaluation_method():
 
                 pointer += layer.output_size
 
+        if not self.batch_valid:
+
+            if self.batch_idx is None:
+                self.batch_idx = np.random.choice(
+                    len(self.x_train), EVAL_BATCH_SIZE, replace=False
+                )
+                self.batch_idx = np.sort(self.batch_idx)
+
+            if self.epoch_counter % BATCH_SIZE  == 0:
+                self.epoch_counter = 0
+                change = EVAL_BATCH_SIZE // BATCH_SWITCH
+
+                keep = np.random.choice(self.batch_idx, EVAL_BATCH_SIZE - change, replace=False)
+
+                available = np.setdiff1d(np.arange(len(self.x_train)), self.batch_idx)
+
+                new = np.random.choice(available, change, replace=False)
+
+                self.batch_idx = np.sort(np.concatenate([keep, new]))
+
+
+            self.epoch_counter += 1
+            self.batch_valid = True
+            print("EPOCH ", self.epoch_counter)
 
         batch_x = self.x_train[self.batch_idx]
         batch_y = self.y_train[self.batch_idx]
@@ -179,11 +178,9 @@ class Evaluation_method():
             y_pred
         )
 
-        # backward
         for layer in reversed(self.my_network.layers):
             loss_gradient = layer.backward(loss_gradient)
 
-        # zbierz gradient
         gradient = []
 
         for layer in self.my_network.layers:
@@ -197,13 +194,11 @@ class Evaluation_method():
                     layer.bias_derivative.flatten()
                 )
 
-        # wyzeruj gradienty
         for layer in self.my_network.layers:
             if isinstance(layer, FullyConnected):
                 layer.weights_derivative.fill(0)
                 layer.bias_derivative.fill(0)
 
-        self.batch_valid = False
 
         return np.array(gradient), len(batch_x)
 
@@ -300,6 +295,7 @@ def run_adam_fair_net(run_id, images, labels, seed=None):
 
     seed = seed or int((time.time() * 1000) + run_id)
     seed = seed % (2**32)
+    np.random.seed(seed)
 
     dimension = ((FULL_IRIS + 1)*HID_LAYER_1 +
                  (HID_LAYER_1 + 1)*HID_LAYER_2 +
@@ -318,6 +314,7 @@ def run_adam_fair_net(run_id, images, labels, seed=None):
         min_clamp=globals.def_clamps[0],
         max_clamp=globals.def_clamps[1],
         checkpoints=globals.def_checkpoints,
+        lr=0.005,
     )
     eval_meth.wrapper = algo
 
@@ -327,6 +324,10 @@ def run_adam_fair_net(run_id, images, labels, seed=None):
 
     result = []
     max_fes = MAX_EVALS
+    weight_log = (
+        f"run={run_id}\n"
+        f"checkpoint\tmin\t\tmax\t\tmean\t\tstd\t\t|x|mean\n"
+    )
 
     for checkpoint in globals.def_checkpoints:
         eval_checkpoint = max_fes * checkpoint
@@ -336,6 +337,15 @@ def run_adam_fair_net(run_id, images, labels, seed=None):
             check_time = algo.log[checkpoint][1]
             checkpoint_x = algo.help_log[checkpoint][0]
             loss_grad = eval_meth.test_error(checkpoint_x, check_time)
+
+            weight_log += (
+                f"{checkpoint:.2f}\t\t"
+                f"{np.min(checkpoint_x):.4f}\t\t"
+                f"{np.max(checkpoint_x):.4f}\t\t"
+                f"{np.mean(checkpoint_x):.4f}\t\t"
+                f"{np.std(checkpoint_x):.4f}\t\t"
+                f"{np.mean(np.abs(checkpoint_x)):.4f}\n"
+            )
 
             result.append({
                 "algorithm": "Adam_Fair",
@@ -354,5 +364,7 @@ def run_adam_fair_net(run_id, images, labels, seed=None):
                 "error": [(None, None)]#result[-1]["error"]]
             })
 
-    print(run_id)
+    print("################################################")
+    print(weight_log)
+    print("################################################")
     return result

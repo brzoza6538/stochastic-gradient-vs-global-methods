@@ -512,16 +512,16 @@ class NL_SHADE_RSP_MID():
             self.objective_counter += evals_used
 
             if (self.objective_counter % 10000 == 0):
-                print(
-                    "-------------------------------------------------",
-                    f"{self.seen_checkpoints}",
-                    f"{self.objective_counter} / {self.max_fes}",
-                    "F mean:", np.mean(self.F_memory),
-                    "F std:", np.std(self.F_memory),
-                    "CR mean:", np.mean(self.Cr_memory),
-                    "CR std:", np.std(self.Cr_memory),
-                    "-------------------------------------------------",
-                )
+                # print(
+                #     "-------------------------------------------------",
+                #     f"{self.seen_checkpoints}\n",
+                #     f"{self.objective_counter} / {self.max_fes}\n",
+                #     "F mean:", np.mean(self.F_memory), "\n",
+                #     "F std:", np.std(self.F_memory), "\n",
+                #     "CR mean:", np.mean(self.Cr_memory), "\n",
+                #     "CR std:", np.std(self.Cr_memory), "\n",
+                #     "-------------------------------------------------",
+                # )
 
             if(self.global_best_fit is None or fit_tmp[curr_indx] < self.global_best_fit):
                 self.global_best_fit = fit_tmp[curr_indx]

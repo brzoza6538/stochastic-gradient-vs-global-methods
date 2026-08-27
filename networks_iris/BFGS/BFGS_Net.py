@@ -164,16 +164,16 @@ class Evaluation_method():
 
             if self.batch_idx is None:
                 self.batch_idx = np.random.choice(
-                    len(self.x_train), BATCH_SIZE, replace=False
+                    len(self.x_train), EVAL_BATCH_SIZE, replace=False
                 )
                 self.batch_idx = np.sort(self.batch_idx)
 
-            if self.epoch_counter % 500  == 0:
+            if self.epoch_counter % BATCH_SIZE  == 0:
                 self.epoch_counter = 0
-                change = BATCH_SIZE // 30
+                change = EVAL_BATCH_SIZE // BATCH_SWITCH
                 print("SWITCH")
 
-                keep = np.random.choice(self.batch_idx, BATCH_SIZE - change, replace=False)
+                keep = np.random.choice(self.batch_idx, EVAL_BATCH_SIZE - change, replace=False)
 
                 available = np.setdiff1d(np.arange(len(self.x_train)), self.batch_idx)
 
@@ -358,6 +358,7 @@ def run_bfgs_net(run_id, images, labels, seed=None):
 
     seed = seed or int((time.time() * 1000) + run_id)
     seed = seed % (2**32)
+    np.random.seed(seed)
 
     x_train, x_test, y_train, y_test = train_test_split(
         images, labels, test_size=0.2, random_state=seed
@@ -382,8 +383,8 @@ def run_bfgs_net(run_id, images, labels, seed=None):
         (HID_LAYER_1 + 1) * HID_LAYER_2 +
         (HID_LAYER_2 + 1) * IRIS_OUTPUT
     )
-    np.random.seed(seed)
-    x0 = np.random.normal(0.0, globals.def_normal_delta, size=dimension)
+
+    x0 = np.clip(np.random.normal(0.0, globals.def_normal_delta, size=dimension), CLAMPS[0], CLAMPS[1])
 
     optimizer = BFGS(
         f_objective=wrapper.f_objective,
@@ -402,7 +403,10 @@ def run_bfgs_net(run_id, images, labels, seed=None):
 
     result = []
     max_fes = MAX_EVALS
-
+    weight_log = (
+        f"run={run_id}\n"
+        f"checkpoint\tmin\t\tmax\t\tmean\t\tstd\t\t|x|mean\n"
+    )
     for checkpoint in globals.def_checkpoints:
         if checkpoint in optimizer.log and len(optimizer.log[checkpoint]) > 0:
             check_time = optimizer.log[checkpoint][-1]
@@ -412,6 +416,16 @@ def run_bfgs_net(run_id, images, labels, seed=None):
         else:
             loss_grad = None
 
+        weight_log += (
+            f"{checkpoint:.2f}\t\t"
+            f"{np.min(checkpoint_x):.4f}\t\t"
+            f"{np.max(checkpoint_x):.4f}\t\t"
+            f"{np.mean(checkpoint_x):.4f}\t\t"
+            f"{np.std(checkpoint_x):.4f}\t\t"
+            f"{np.mean(np.abs(checkpoint_x)):.4f}\n"
+        )
+
+
         result.append({
             "algorithm": "bfgs",
             "dimension": dimension,
@@ -420,5 +434,7 @@ def run_bfgs_net(run_id, images, labels, seed=None):
             "error": [loss_grad]
         })
 
-    print("Run:", run_id)
+    print("################################################")
+    print(weight_log)
+    print("################################################")
     return result

@@ -7,4 +7,4 @@ iris = datasets.load_iris()
 
 images, labels = iris.data, iris.target.astype(int)
 
-gather_data(partial(run_adagrad_net, images=images, labels=labels), "ada_fair_NEW_11")
+gather_data(partial(run_adagrad_net, images=images, labels=labels), "ada_fair_NEW_13")

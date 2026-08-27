@@ -17,12 +17,17 @@ HID_LAYER_2 = 3
 # OUTPUT = 10
 IRIS_OUTPUT = 3
 
-BATCH_SIZE = 30
+EVAL_BATCH_SIZE = 50 #256 #256 #56000 #128
+BATCH_SIZE = 100
+BATCH_SWITCH = 30 # 1/BATCH_SWITCH
+
+
 POP_SIZE = 150
 
 MAX_EVALS = 10000 * 40
 
 CLAMPS = [-1, 1]
+
 
 
 
@@ -78,7 +83,7 @@ class FullyConnected(Layer):
 
     def forward(self, x: np.ndarray) -> np.ndarray:
         self.inputs = x
-        info = (np.matmul(x, self.weights) + (self.bias * self.input_size))
+        info = np.matmul(x, self.weights) + (self.bias) #* (self.input_size)
 
         return info
 
@@ -86,7 +91,7 @@ class FullyConnected(Layer):
         self.weights_derivative += np.matmul(self.inputs.T, output_error_derivative)
         input_error_derivative = np.matmul(output_error_derivative, self.weights.T)
 
-        self.bias_derivative += np.sum(output_error_derivative, axis=0, keepdims=True) * self.input_size
+        self.bias_derivative += np.sum(output_error_derivative, axis=0, keepdims=True) #* (self.input_size)
         return input_error_derivative
 
 class Tanh(Layer):
@@ -220,9 +225,9 @@ class Network:
             x_train_shuffled = x_train[permutation]
             y_train_shuffled = y_train[permutation]
 
-            for start_idx in range(0, num_samples, BATCH_SIZE):
+            for start_idx in range(0, num_samples, EVAL_BATCH_SIZE):
                 # print("epoch: ", self.epoch, " \t batch : ", start_idx)
-                end_idx = min(start_idx + BATCH_SIZE, num_samples)
+                end_idx = min(start_idx + EVAL_BATCH_SIZE, num_samples)
                 x_batch = x_train_shuffled[start_idx:end_idx]
                 y_batch = y_train_shuffled[start_idx:end_idx]
 
