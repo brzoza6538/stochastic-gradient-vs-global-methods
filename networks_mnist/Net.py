@@ -17,7 +17,11 @@ HID_LAYER_2 = 16
 # OUTPUT = 10
 MNIST_OUTPUT = 10
 
-BATCH_SIZE = 256 #256 #56000 #128
+EVAL_BATCH_SIZE = 50 #256 #256 #56000 #128
+BATCH_SIZE = 100
+BATCH_SWITCH = 30 # 1/BATCH_SWITCH
+
+
 POP_SIZE = 700000
 
 MAX_EVALS = 10000 * 100 #100 #3658 #int(100/2*0.7/2) #3658 (INPUT, time, BATCH)
@@ -63,7 +67,7 @@ class FullyConnected(Layer):
         super().__init__()
         self.input_size = input_size
         self.output_size = output_size
-        self.weights = np.random.randn(input_size, output_size) * np.sqrt(1.0 / input_size)
+        self.weights = np.random.randn(input_size, output_size) * np.sqrt(0.1)
         self.bias = np.zeros((1, output_size))
 
         self.weights_derivative = np.zeros((input_size, output_size))
@@ -79,7 +83,7 @@ class FullyConnected(Layer):
 
     def forward(self, x: np.ndarray) -> np.ndarray:
         self.inputs = x
-        info = (np.matmul(x, self.weights) + (self.bias * self.input_size))
+        info = np.matmul(x, self.weights) + (self.bias) #* (self.input_size)
 
         return info
 
@@ -87,7 +91,7 @@ class FullyConnected(Layer):
         self.weights_derivative += np.matmul(self.inputs.T, output_error_derivative)
         input_error_derivative = np.matmul(output_error_derivative, self.weights.T)
 
-        self.bias_derivative += np.sum(output_error_derivative, axis=0, keepdims=True) * self.input_size
+        self.bias_derivative += np.sum(output_error_derivative, axis=0, keepdims=True) #* (self.input_size)
         return input_error_derivative
 
 class Tanh(Layer):
@@ -116,7 +120,9 @@ class ReLU(Layer):
     def backward(self, output_error_derivative: np.ndarray) -> np.ndarray:
         return (self.inputs > 0).astype(float) * output_error_derivative
 
+
 class Softmax(Layer):
+    # to be used only with cross 
     def __init__(self):
         super().__init__()
         self.outputs = None
@@ -219,9 +225,9 @@ class Network:
             x_train_shuffled = x_train[permutation]
             y_train_shuffled = y_train[permutation]
 
-            for start_idx in range(0, num_samples, BATCH_SIZE):
+            for start_idx in range(0, num_samples, EVAL_BATCH_SIZE):
                 # print("epoch: ", self.epoch, " \t batch : ", start_idx)
-                end_idx = min(start_idx + BATCH_SIZE, num_samples)
+                end_idx = min(start_idx + EVAL_BATCH_SIZE, num_samples)
                 x_batch = x_train_shuffled[start_idx:end_idx]
                 y_batch = y_train_shuffled[start_idx:end_idx]
 
